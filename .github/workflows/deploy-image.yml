@@ -13,6 +13,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: mcp-server
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-push:
