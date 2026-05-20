@@ -40,3 +40,10 @@ jobs:
         run: |
           docker build -t $REGISTRY/$ECR_REPOSITORY:latest mcp-server/
           docker push $REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name mcp-server-dev \
+            --image-uri ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest \
+            --region ${{ env.AWS_REGION }}
