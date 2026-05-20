@@ -138,11 +138,32 @@ The Lambda execution role has `AWSLambdaBasicExecutionRole` only. Extend it in `
 
 A lightly-used personal MCP server costs effectively nothing.
 
+## Authentication
+
+The endpoint requires an `x-api-key` header on every request. The key is stored in AWS Secrets Manager (`mcp-infra/api-key`) and never appears in logs or Terraform state.
+
+```bash
+curl -X POST https://YOUR_ENDPOINT/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
+
+To provision the key before deploying:
+
+```bash
+aws secretsmanager create-secret \
+  --name mcp-infra/api-key \
+  --secret-string "$(openssl rand -hex 32)" \
+  --region us-east-1
+```
+
+The GitHub PAT (for authenticated GitHub API calls, 5000 req/hr) is stored the same way under `mcp-infra/github-pat`. Both secrets are fetched once per Lambda cold start and cached in memory.
+
 ## Known limitations / production hardening
 
-- [ ] GitHub Actions IAM role has `AdministratorAccess` — scope it down once you know what Terraform needs
 - [ ] API Gateway CORS allows `*` origins — restrict for production
-- [ ] No authentication on the endpoint — add an API key, IAM auth, or Lambda authorizer
 - [ ] ECR `force_delete = true` is dev-only — remove before creating a prod environment
 - [ ] Add a prod environment (`terraform/environments/prod/`) when ready
 

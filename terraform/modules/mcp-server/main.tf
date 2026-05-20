@@ -82,6 +82,7 @@ resource "aws_lambda_function" "mcp_server" {
     variables = {
       ENVIRONMENT       = var.environment
       GITHUB_PAT_SECRET = "mcp-infra/github-pat"
+      API_KEY_SECRET    = "mcp-infra/api-key"
     }
   }
 

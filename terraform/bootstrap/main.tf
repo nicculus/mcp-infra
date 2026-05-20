@@ -255,6 +255,9 @@ resource "aws_iam_role_policy" "github_actions" {
           "iam:DetachRolePolicy",
           "iam:ListAttachedRolePolicies",
           "iam:ListRolePolicies",
+          "iam:PutRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:DeleteRolePolicy",
           "iam:PassRole",
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/mcp-server-lambda-*"
