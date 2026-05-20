@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "image/**"
+      - "mcp-server/**"
 
 permissions:
   id-token: write
@@ -38,5 +38,5 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -t $REGISTRY/$ECR_REPOSITORY:latest image/
+          docker build -t $REGISTRY/$ECR_REPOSITORY:latest mcp-server/
           docker push $REGISTRY/$ECR_REPOSITORY:latest
