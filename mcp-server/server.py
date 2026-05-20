@@ -7,22 +7,33 @@ import httpx
 from fastmcp import FastMCP
 from mangum import Mangum
 from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 mcp = FastMCP("github-repo-explorer")
 
+_sm = boto3.client("secretsmanager")
 
-def _get_github_headers() -> dict:
+
+def _get_secret(env_var: str) -> str:
+    name = os.environ.get(env_var, "")
+    if not name:
+        return ""
+    return _sm.get_secret_value(SecretId=name).get("SecretString", "")
+
+
+# Fetched once per container cold start
+_API_KEY = _get_secret("API_KEY_SECRET")
+_GITHUB_PAT = _get_secret("GITHUB_PAT_SECRET")
+
+
+def _github_headers() -> dict:
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    secret_name = os.environ.get("GITHUB_PAT_SECRET")
-    if secret_name:
-        client = boto3.client("secretsmanager")
-        secret = client.get_secret_value(SecretId=secret_name)
-        token = secret.get("SecretString", "")
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+    if _GITHUB_PAT:
+        headers["Authorization"] = f"Bearer {_GITHUB_PAT}"
     return headers
 
 
@@ -43,7 +54,7 @@ async def get_repo_summary(repo_url: str) -> dict:
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}",
-            headers=_get_github_headers(),
+            headers=_github_headers(),
         )
         r.raise_for_status()
         data = r.json()
@@ -67,14 +78,28 @@ async def get_repo_readme(repo_url: str) -> str:
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}/readme",
-            headers=_get_github_headers(),
+            headers=_github_headers(),
         )
         r.raise_for_status()
         data = r.json()
     return base64.b64decode(data["content"]).decode("utf-8")
 
 
-# Lambda entrypoint — wrap with Starlette to wire up FastMCP's lifespan
+# --- Auth middleware ---------------------------------------------------------
+
 _mcp_app = mcp.http_app(stateless_http=True)
+
+
+async def _auth_middleware(scope, receive, send):
+    if scope["type"] == "http" and _API_KEY:
+        request = Request(scope, receive)
+        if request.headers.get("x-api-key") != _API_KEY:
+            response = JSONResponse({"error": "Unauthorized"}, status_code=401)
+            await response(scope, receive, send)
+            return
+    await _mcp_app(scope, receive, send)
+
+
 _app = Starlette(routes=_mcp_app.routes, lifespan=_mcp_app.lifespan)
+_app.middleware_stack = _auth_middleware
 handler = Mangum(_app, lifespan="on")
