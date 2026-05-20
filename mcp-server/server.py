@@ -1,6 +1,8 @@
 import base64
+import os
 import re
 
+import boto3
 import httpx
 from fastmcp import FastMCP
 from mangum import Mangum
@@ -8,10 +10,20 @@ from starlette.applications import Starlette
 
 mcp = FastMCP("github-repo-explorer")
 
-GITHUB_HEADERS = {
-    "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-}
+
+def _get_github_headers() -> dict:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    secret_name = os.environ.get("GITHUB_PAT_SECRET")
+    if secret_name:
+        client = boto3.client("secretsmanager")
+        secret = client.get_secret_value(SecretId=secret_name)
+        token = secret.get("SecretString", "")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 def _parse_repo(repo_url: str) -> tuple[str, str]:
@@ -31,7 +43,7 @@ async def get_repo_summary(repo_url: str) -> dict:
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}",
-            headers=GITHUB_HEADERS,
+            headers=_get_github_headers(),
         )
         r.raise_for_status()
         data = r.json()
@@ -55,7 +67,7 @@ async def get_repo_readme(repo_url: str) -> str:
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}/readme",
-            headers=GITHUB_HEADERS,
+            headers=_get_github_headers(),
         )
         r.raise_for_status()
         data = r.json()

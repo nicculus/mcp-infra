@@ -47,12 +47,19 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Add permissions your MCP server needs here (DynamoDB, S3, Secrets Manager, etc.)
-# resource "aws_iam_role_policy" "mcp_permissions" {
-#   name = "mcp-permissions"
-#   role = aws_iam_role.lambda.id
-#   policy = jsonencode({ ... })
-# }
+resource "aws_iam_role_policy" "mcp_secrets" {
+  name = "mcp-secrets"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = "arn:aws:secretsmanager:*:${data.aws_caller_identity.current.account_id}:secret:mcp-infra/*"
+    }]
+  })
+}
 
 # --- CloudWatch log group ----------------------------------------------------
 
@@ -73,7 +80,8 @@ resource "aws_lambda_function" "mcp_server" {
 
   environment {
     variables = {
-      ENVIRONMENT = var.environment
+      ENVIRONMENT       = var.environment
+      GITHUB_PAT_SECRET = "mcp-infra/github-pat"
     }
   }
 
