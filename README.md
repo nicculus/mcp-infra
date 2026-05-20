@@ -87,16 +87,14 @@ GitHub Actions will run `terraform plan` automatically. Merge to main to apply.
 
 ### 4. Push an image
 
-The Lambda function needs a container image in ECR before it can be created. A minimal placeholder is included in `image/` — push it first:
+The Lambda function needs a container image in ECR before it can be created. The `deploy-image` workflow handles this automatically on push to `main` when files under `mcp-server/` change. Or push manually:
 
 ```bash
-# The deploy-image workflow handles this automatically on push to main
-# when files under image/ change. Or push manually:
 aws ecr get-login-password --region us-east-1 | \
   docker login --username AWS --password-stdin \
   YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
 
-docker build -t YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mcp-server:latest image/
+docker build -t YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mcp-server:latest mcp-server/
 docker push YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mcp-server:latest
 ```
 
@@ -108,9 +106,10 @@ After the image is pushed, re-run the Terraform workflow to finish creating the 
 ├── .github/workflows/
 │   ├── terraform.yml       # Plan on PR, apply on merge to main
 │   └── deploy-image.yml    # Build + push container image to ECR
-├── image/
+├── mcp-server/
 │   ├── Dockerfile          # Lambda container image
-│   └── handler.py          # Placeholder — replace with your MCP server
+│   ├── requirements.txt
+│   └── server.py           # FastMCP server (replace with your own)
 └── terraform/
     ├── bootstrap/           # Run once manually
     │   └── main.tf          # OIDC provider, state bucket, IAM role
@@ -124,7 +123,7 @@ After the image is pushed, re-run the Terraform workflow to finish creating the 
 
 ## Deploying your own MCP server
 
-Replace `image/handler.py` (and the `Dockerfile` if needed) with your MCP server implementation. Any push to `main` that touches `image/` will rebuild and push the image, then Lambda will pick it up on the next invocation.
+Replace `mcp-server/server.py` (and the `Dockerfile` if needed) with your MCP server implementation. Any push to `main` that touches `mcp-server/` will rebuild and push the image, then Lambda will pick it up on the next invocation.
 
 The Lambda execution role has `AWSLambdaBasicExecutionRole` only. Extend it in `terraform/modules/mcp-server/main.tf` for additional AWS access (DynamoDB, S3, Secrets Manager, etc.).
 
