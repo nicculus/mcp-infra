@@ -6,7 +6,7 @@ from fastmcp import FastMCP
 from mangum import Mangum
 from starlette.applications import Starlette
 
-mcp = FastMCP("github-repo-explorer", stateless_http=True)
+mcp = FastMCP("github-repo-explorer")
 
 GITHUB_HEADERS = {
     "Accept": "application/vnd.github+json",
@@ -63,6 +63,6 @@ async def get_repo_readme(repo_url: str) -> str:
 
 
 # Lambda entrypoint — wrap with Starlette to wire up FastMCP's lifespan
-_mcp_app = mcp.http_app()
+_mcp_app = mcp.http_app(stateless_http=True)
 _app = Starlette(routes=_mcp_app.routes, lifespan=_mcp_app.lifespan)
 handler = Mangum(_app, lifespan="on")
