@@ -142,12 +142,81 @@ A lightly-used personal MCP server costs effectively nothing.
 
 The endpoint requires an `x-api-key` header on every request. The key is stored in AWS Secrets Manager (`mcp-infra/api-key`) and never appears in logs or Terraform state.
 
+Responses are [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events). Pipe through `grep` and `sed` to extract the JSON:
+
 ```bash
-curl -X POST https://YOUR_ENDPOINT/mcp \
+curl -s -X POST https://YOUR_ENDPOINT/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}' \
+  | grep '^data:' | sed 's/^data: //'
+```
+
+Example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "get_repo_summary",
+        "description": "Get metadata about a GitHub repository (stars, language, description, topics).",
+        "inputSchema": {
+          "properties": { "repo_url": { "type": "string" } },
+          "required": ["repo_url"],
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_repo_readme",
+        "description": "Fetch the README content of a GitHub repository.",
+        "inputSchema": {
+          "properties": { "repo_url": { "type": "string" } },
+          "required": ["repo_url"],
+          "type": "object"
+        }
+      }
+    ]
+  }
+}
+```
+
+Call a tool:
+
+```bash
+curl -s -X POST https://YOUR_ENDPOINT/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","id":2,"params":{"name":"get_repo_summary","arguments":{"repo_url":"anthropics/anthropic-sdk-python"}}}' \
+  | grep '^data:' | sed 's/^data: //'
+```
+
+Example response:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [{ "type": "text", "text": "..." }],
+    "structuredContent": {
+      "name": "anthropics/anthropic-sdk-python",
+      "description": "The official Python library for the Anthropic API",
+      "stars": 3100,
+      "forks": 312,
+      "language": "Python",
+      "topics": ["anthropic", "claude", "llm"],
+      "url": "https://github.com/anthropics/anthropic-sdk-python",
+      "created_at": "2023-07-19T17:00:00Z",
+      "updated_at": "2026-05-20T00:00:00Z"
+    },
+    "isError": false
+  }
+}
 ```
 
 To provision the key before deploying:
