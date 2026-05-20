@@ -5,10 +5,15 @@ on:
     branches: [main]
     paths:
       - "mcp-server/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "mcp-server/**"
 
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 env:
   AWS_REGION: us-east-1
@@ -34,14 +39,19 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push
+      - name: Build
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker build -t $REGISTRY/$ECR_REPOSITORY:latest mcp-server/
-          docker push $REGISTRY/$ECR_REPOSITORY:latest
+        run: docker build -t $REGISTRY/$ECR_REPOSITORY:latest mcp-server/
+
+      - name: Push
+        if: github.event_name == 'push'
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: docker push $REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Deploy to Lambda
+        if: github.event_name == 'push'
         run: |
           aws lambda update-function-code \
             --function-name mcp-server-dev \
