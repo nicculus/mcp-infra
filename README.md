@@ -159,7 +159,16 @@ aws secretsmanager create-secret \
   --region us-east-1
 ```
 
-The GitHub PAT (for authenticated GitHub API calls, 5000 req/hr) is stored the same way under `mcp-infra/github-pat`. Both secrets are fetched once per Lambda cold start and cached in memory.
+The GitHub PAT (for authenticated GitHub API calls, 5,000 req/hr vs 60 unauthenticated) is stored the same way. Create one at GitHub → Settings → Developer settings → Personal access tokens, scoped to **Public Repositories (read-only)**, then store it:
+
+```bash
+aws secretsmanager create-secret \
+  --name mcp-infra/github-pat \
+  --secret-string "YOUR_PAT" \
+  --region us-east-1
+```
+
+Both secrets are fetched once per Lambda cold start and cached in memory.
 
 ## Known limitations / production hardening
 
