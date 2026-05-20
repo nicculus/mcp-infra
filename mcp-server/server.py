@@ -3,7 +3,6 @@ import re
 
 import httpx
 from fastmcp import FastMCP
-from mangum import Mangum
 
 mcp = FastMCP("github-repo-explorer")
 
@@ -62,5 +61,4 @@ async def get_repo_readme(repo_url: str) -> str:
 
 
 # Lambda entrypoint
-_app = mcp.http_app()
-handler = Mangum(_app, lifespan="on")
+handler = mcp.lambda_handler()
