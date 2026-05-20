@@ -16,10 +16,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "REPLACE-WITH-BOOTSTRAP-OUTPUT"  # state_bucket output
+    bucket         = "mcp-infra-tfstate-017128162284"
     key            = "dev/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "mcp-infra-tflock"
+    use_lockfile   = true
     encrypt        = true
   }
 }
