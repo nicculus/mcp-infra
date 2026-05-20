@@ -16,11 +16,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "mcp-infra-tfstate-017128162284"
-    key            = "dev/terraform.tfstate"
-    region         = "us-east-1"
-    use_lockfile   = true
-    encrypt        = true
+    bucket       = "mcp-infra-tfstate-017128162284"
+    key          = "dev/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
@@ -45,7 +45,7 @@ variable "aws_region" {
 resource "aws_ecr_repository" "mcp_server" {
   name                 = "mcp-server"
   image_tag_mutability = "MUTABLE"
-  force_delete         = true  # Dev only - remove for prod
+  force_delete         = true # Dev only - remove for prod
 
   image_scanning_configuration {
     scan_on_push = true
