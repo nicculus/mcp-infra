@@ -62,4 +62,5 @@ async def get_repo_readme(repo_url: str) -> str:
 
 
 # Lambda entrypoint
-handler = Mangum(mcp.http_app(), lifespan="off")
+_app = mcp.http_app()
+handler = Mangum(_app, lifespan="on")
