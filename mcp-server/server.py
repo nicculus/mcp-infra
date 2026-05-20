@@ -6,7 +6,7 @@ from fastmcp import FastMCP
 from mangum import Mangum
 from starlette.applications import Starlette
 
-mcp = FastMCP("github-repo-explorer")
+mcp = FastMCP("github-repo-explorer", stateless_http=True)
 
 GITHUB_HEADERS = {
     "Accept": "application/vnd.github+json",
