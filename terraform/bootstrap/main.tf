@@ -251,6 +251,36 @@ resource "aws_iam_role_policy" "github_actions" {
         ]
         Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/*"
       },
+      # SNS — create and manage alarm topics
+      {
+        Sid    = "SNS"
+        Effect = "Allow"
+        Action = [
+          "sns:CreateTopic",
+          "sns:DeleteTopic",
+          "sns:GetTopicAttributes",
+          "sns:SetTopicAttributes",
+          "sns:Subscribe",
+          "sns:Unsubscribe",
+          "sns:GetSubscriptionAttributes",
+          "sns:ListTagsForResource",
+          "sns:TagResource",
+        ]
+        Resource = "arn:aws:sns:*:${data.aws_caller_identity.current.account_id}:mcp-server-alarms-*"
+      },
+      # CloudWatch alarms
+      {
+        Sid    = "CloudWatchAlarms"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DeleteAlarms",
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource",
+          "cloudwatch:TagResource",
+        ]
+        Resource = "arn:aws:cloudwatch:*:${data.aws_caller_identity.current.account_id}:alarm:mcp-server-*"
+      },
       # IAM — create and manage Lambda execution role
       {
         Sid    = "IAMLambdaRole"

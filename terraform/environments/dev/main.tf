@@ -54,6 +54,11 @@ resource "aws_ecr_repository" "mcp_server" {
 
 # --- MCP server (Lambda + API Gateway) ---------------------------------------
 
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+}
+
 module "mcp_server" {
   source = "../../modules/mcp-server"
 
@@ -61,6 +66,7 @@ module "mcp_server" {
   environment     = "dev"
   memory_size     = 512
   timeout         = 30
+  alarm_email     = var.alarm_email
 }
 
 # --- Outputs -----------------------------------------------------------------
