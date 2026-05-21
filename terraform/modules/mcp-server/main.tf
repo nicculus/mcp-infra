@@ -127,6 +127,17 @@ variable "throttle_burst_limit" {
   description = "Max concurrent requests (burst)"
 }
 
+variable "alarm_email" {
+  type        = string
+  description = "Email address to notify on Lambda invocation or error spikes"
+}
+
+variable "alarm_invocations_threshold" {
+  type        = number
+  default     = 1000
+  description = "Lambda invocations per 5 minutes before alerting"
+}
+
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.mcp.id
   name        = "$default"
@@ -176,6 +187,48 @@ resource "aws_lambda_permission" "api_gw" {
   function_name = aws_lambda_function.mcp_server.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.mcp.execution_arn}/*/*"
+}
+
+# --- CloudWatch alarms -------------------------------------------------------
+
+resource "aws_sns_topic" "alarms" {
+  name = "mcp-server-alarms-${var.environment}"
+}
+
+resource "aws_sns_topic_subscription" "alarms_email" {
+  topic_arn = aws_sns_topic.alarms.arn
+  protocol  = "email"
+  endpoint  = var.alarm_email
+}
+
+resource "aws_cloudwatch_metric_alarm" "lambda_invocations" {
+  alarm_name          = "mcp-server-${var.environment}-invocations"
+  alarm_description   = "Lambda invocation spike — possible flood or abuse"
+  namespace           = "AWS/Lambda"
+  metric_name         = "Invocations"
+  dimensions          = { FunctionName = aws_lambda_function.mcp_server.function_name }
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = var.alarm_invocations_threshold
+  comparison_operator = "GreaterThanThreshold"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  treat_missing_data  = "notBreaching"
+}
+
+resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  alarm_name          = "mcp-server-${var.environment}-errors"
+  alarm_description   = "Lambda error rate spike"
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  dimensions          = { FunctionName = aws_lambda_function.mcp_server.function_name }
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 10
+  comparison_operator = "GreaterThanThreshold"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  treat_missing_data  = "notBreaching"
 }
 
 # --- Outputs -----------------------------------------------------------------
