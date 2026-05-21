@@ -80,7 +80,15 @@ backend "s3" {
 |------|-------|
 | `AWS_ROLE_ARN` | `role_arn` output from bootstrap |
 
-### 3. Push and go
+### 3. Set the alarm email
+
+The dev environment needs an email for CloudWatch alerts. Add a GitHub Actions variable in your repo settings → Secrets and variables → Actions → Variables:
+
+| Name | Value |
+|------|-------|
+| `TF_VAR_alarm_email` | Your email address |
+
+### 4. Push and go
 
 ```bash
 git add . && git commit -m "initial infra" && git push
@@ -88,7 +96,9 @@ git add . && git commit -m "initial infra" && git push
 
 GitHub Actions will run `terraform plan` automatically. Merge to main to apply.
 
-### 4. Push an image
+> **Note:** After the first apply, AWS will send a confirmation email for the CloudWatch alarm SNS subscription — click **Confirm subscription** or alerts won't fire.
+
+### 5. Push an image
 
 The Lambda function needs a container image in ECR before it can be created. The `deploy-image` workflow handles this automatically on push to `main` when files under `mcp-server/` change. Or push manually:
 
@@ -241,6 +251,16 @@ aws secretsmanager create-secret \
 ```
 
 Both secrets are fetched once per Lambda cold start and cached in memory.
+
+## Cost protection and alerting
+
+| Layer | What it does |
+|-------|-------------|
+| API Gateway throttling | 429s after 10 req/sec sustained / 50 burst — caps Lambda invocations |
+| CloudWatch alarms | Email within 5 minutes if invocations > 1,000 or errors > 10 in a 5-minute window |
+| AWS Budget alert | Email when monthly spend hits 80% of $5 |
+
+> After the first Terraform apply, confirm the SNS subscription email from AWS or alerts won't fire.
 
 ## Known limitations / production hardening
 
