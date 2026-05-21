@@ -223,11 +223,20 @@ resource "aws_iam_role_policy" "github_actions" {
         ]
         Resource = "arn:aws:apigateway:*::*"
       },
-      # CloudWatch Logs — DescribeLogGroups requires * (AWS doesn't support resource-level restriction)
+      # CloudWatch Logs — these actions don't support resource-level restrictions in AWS
       {
-        Sid      = "CloudWatchLogsDescribe"
-        Effect   = "Allow"
-        Action   = ["logs:DescribeLogGroups"]
+        Sid    = "CloudWatchLogsGlobal"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:CreateLogDelivery",
+          "logs:GetLogDelivery",
+          "logs:UpdateLogDelivery",
+          "logs:DeleteLogDelivery",
+          "logs:ListLogDeliveries",
+          "logs:PutResourcePolicy",
+          "logs:DescribeResourcePolicies",
+        ]
         Resource = "*"
       },
       {
