@@ -275,6 +275,35 @@ resource "aws_iam_role_policy" "github_actions" {
   })
 }
 
+# --- Cost budget alert -------------------------------------------------------
+
+variable "budget_alert_email" {
+  description = "Email address to notify when monthly spend exceeds the threshold"
+  type        = string
+}
+
+variable "budget_limit_usd" {
+  description = "Monthly budget limit in USD"
+  type        = number
+  default     = 5
+}
+
+resource "aws_budgets_budget" "mcp_infra" {
+  name         = "mcp-infra-monthly"
+  budget_type  = "COST"
+  limit_amount = tostring(var.budget_limit_usd)
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 80
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
+}
+
 # --- Outputs -----------------------------------------------------------------
 
 output "role_arn" {

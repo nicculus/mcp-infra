@@ -43,13 +43,16 @@ Your MCP server code
 ```bash
 cd terraform/bootstrap
 terraform init
-terraform apply -var="github_org=YOUR_GITHUB_USERNAME"
+terraform apply \
+  -var="github_org=YOUR_GITHUB_USERNAME" \
+  -var="budget_alert_email=YOUR_EMAIL"
 ```
 
 This creates:
 - S3 bucket + DynamoDB table for remote Terraform state
 - GitHub OIDC provider in AWS (no stored credentials needed)
 - IAM role (`mcp-infra-github-actions`) that GitHub Actions can assume
+- AWS Budget alert — email when monthly spend exceeds 80% of $5
 
 > **Note:** If you see `EntityAlreadyExists` for the OIDC provider, you already have one from a previous project. Run:
 > ```bash
