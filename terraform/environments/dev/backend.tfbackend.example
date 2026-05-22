@@ -1,0 +1,11 @@
+# Copy this file to backend.tfbackend and fill in your values:
+#   cp backend.tfbackend.example backend.tfbackend
+#
+# Then init with:
+#   terraform init -backend-config=backend.tfbackend
+#
+# Get the bucket name from bootstrap outputs:
+#   cd ../../bootstrap && terraform output state_bucket
+
+bucket = "REPLACE-WITH-BOOTSTRAP-state_bucket-OUTPUT"
+region = "us-east-1"

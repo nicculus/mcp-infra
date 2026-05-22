@@ -1,8 +1,10 @@
 # =============================================================================
 # DEV ENVIRONMENT - Serverless (Lambda + API Gateway)
 # =============================================================================
-# After running bootstrap, fill in the backend config below with the
-# bucket name from the bootstrap outputs.
+# Backend config is intentionally partial — bucket and region are resolved at
+# init time. In CI the bucket name is derived from the AWS account ID via
+# `aws sts get-caller-identity`; locally, pass a .tfbackend file
+# (see backend.tfbackend.example).
 # =============================================================================
 
 terraform {
@@ -16,9 +18,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "mcp-infra-tfstate-017128162284"
     key          = "dev/terraform.tfstate"
-    region       = "us-east-1"
     use_lockfile = true
     encrypt      = true
   }
