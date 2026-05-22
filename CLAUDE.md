@@ -53,17 +53,18 @@ An alternative Lambda Function URL approach is commented out in the module as a 
 
 ## Critical setup step
 
-After running bootstrap, you must manually replace the placeholder in `terraform/environments/dev/main.tf`:
+After running bootstrap, add the `role_arn` bootstrap output as the `AWS_ROLE_ARN` secret in GitHub repo settings. The state bucket name is derived automatically in CI from the AWS account ID — no manual edits needed.
 
-```hcl
-bucket = "REPLACE-WITH-BOOTSTRAP-OUTPUT"  # use state_bucket output from bootstrap
+For local development, create a backend config file:
+
+```bash
+cd terraform/environments/dev
+cp backend.tfbackend.example backend.tfbackend
+# Edit backend.tfbackend: set bucket = "mcp-infra-tfstate-<account-id>"
+terraform init -backend-config=backend.tfbackend
 ```
-
-And add the `role_arn` bootstrap output as the `AWS_ROLE_ARN` secret in GitHub repo settings.
 
 ## Known rough edges to address
 
-- GitHub Actions IAM role has `AdministratorAccess` — scope it down once the required permissions are known
 - `force_delete = true` on the ECR repo is dev-only; remove for prod
 - CORS on API Gateway allows `*` origins — lock down for prod
-- No auth on the API Gateway endpoint yet (options: API key, IAM auth, Lambda authorizer)

@@ -65,20 +65,22 @@ Save the outputs — you'll need them in the next step.
 
 ### 2. Wire up the pipeline
 
-**Update the backend config** in `terraform/environments/dev/main.tf`:
-
-```hcl
-backend "s3" {
-  bucket = "YOUR_STATE_BUCKET"   # state_bucket output from bootstrap
-  ...
-}
-```
-
 **Add a GitHub Actions secret** in your repo settings → Secrets and variables → Actions:
 
 | Name | Value |
 |------|-------|
 | `AWS_ROLE_ARN` | `role_arn` output from bootstrap |
+
+**For local Terraform runs**, create a backend config file (gitignored):
+
+```bash
+cd terraform/environments/dev
+cp backend.tfbackend.example backend.tfbackend
+# Edit backend.tfbackend — set bucket to the state_bucket output from bootstrap
+terraform init -backend-config=backend.tfbackend
+```
+
+> CI derives the bucket name automatically from your AWS account ID — no manual config needed there.
 
 ### 3. Set the alarm email
 
