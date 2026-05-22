@@ -11,4 +11,6 @@ override.tf.json
 *_override.tf.json
 *.tfvars
 !example.tfvars
+*.tfbackend
+!*.tfbackend.example
 .vscode/
