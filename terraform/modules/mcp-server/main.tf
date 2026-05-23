@@ -2,6 +2,16 @@
 # MCP Server Module - Lambda behind API Gateway (zero idle cost)
 # =============================================================================
 
+terraform {
+  required_version = ">= 1.12.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 variable "environment" {
   type    = string
   default = "dev"
@@ -28,10 +38,43 @@ variable "allowed_origins" {
   default     = ["*"]
 }
 
+variable "reserved_concurrent_executions" {
+  type        = number
+  default     = 10
+  description = "Max concurrent Lambda executions. Caps cost and blast radius."
+}
+
 # --- Data sources ------------------------------------------------------------
 
-data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
+
+# --- KMS key (shared across CloudWatch, SNS, Lambda env vars) ----------------
+
+resource "aws_kms_key" "mcp" {
+  description             = "mcp-server-${var.environment} encryption key"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_kms_alias" "mcp" {
+  name          = "alias/mcp-server-${var.environment}"
+  target_key_id = aws_kms_key.mcp.key_id
+}
 
 # --- Lambda execution role ---------------------------------------------------
 
@@ -59,19 +102,35 @@ resource "aws_iam_role_policy" "mcp_secrets" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
-      Resource = "arn:aws:secretsmanager:*:${data.aws_caller_identity.current.account_id}:secret:mcp-infra/*"
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = "arn:aws:secretsmanager:*:${data.aws_caller_identity.current.account_id}:secret:mcp-infra/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+        Resource = aws_kms_key.mcp.arn
+      },
+    ]
   })
+}
+
+# --- Dead Letter Queue -------------------------------------------------------
+
+resource "aws_sqs_queue" "dlq" {
+  name                      = "mcp-server-${var.environment}-dlq"
+  message_retention_seconds = 1209600 # 14 days
+  kms_master_key_id         = aws_kms_key.mcp.arn
 }
 
 # --- CloudWatch log group ----------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "mcp_server" {
   name              = "/aws/lambda/mcp-server-${var.environment}"
-  retention_in_days = 14
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.mcp.arn
 }
 
 # --- Lambda function (container image) ---------------------------------------
@@ -84,6 +143,19 @@ resource "aws_lambda_function" "mcp_server" {
   memory_size   = var.memory_size
   timeout       = var.timeout
 
+  # checkov:skip=CKV_AWS_117: Lambda VPC requires NAT gateway (~$32/month) which breaks the zero-cost promise
+  # checkov:skip=CKV_AWS_272: Code-signing is an enterprise feature out of scope for this template
+
+  reserved_concurrent_executions = var.reserved_concurrent_executions
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  dead_letter_config {
+    target_arn = aws_sqs_queue.dlq.arn
+  }
+
   environment {
     variables = {
       ENVIRONMENT       = var.environment
@@ -91,6 +163,8 @@ resource "aws_lambda_function" "mcp_server" {
       API_KEY_SECRET    = "mcp-infra/api-key"
     }
   }
+
+  kms_key_arn = aws_kms_key.mcp.arn
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic,
@@ -170,7 +244,8 @@ resource "aws_apigatewayv2_stage" "default" {
 
 resource "aws_cloudwatch_log_group" "api_gw" {
   name              = "/aws/apigateway/mcp-${var.environment}"
-  retention_in_days = 14
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.mcp.arn
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
@@ -182,9 +257,11 @@ resource "aws_apigatewayv2_integration" "lambda" {
 }
 
 resource "aws_apigatewayv2_route" "catch_all" {
-  api_id    = aws_apigatewayv2_api.mcp.id
-  route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  # checkov:skip=CKV_AWS_309: Authorization is enforced in Lambda via x-api-key header check, not at the route level
+  api_id             = aws_apigatewayv2_api.mcp.id
+  route_key          = "$default"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_lambda_permission" "api_gw" {
@@ -198,7 +275,8 @@ resource "aws_lambda_permission" "api_gw" {
 # --- CloudWatch alarms -------------------------------------------------------
 
 resource "aws_sns_topic" "alarms" {
-  name = "mcp-server-alarms-${var.environment}"
+  name              = "mcp-server-alarms-${var.environment}"
+  kms_master_key_id = aws_kms_key.mcp.arn
 }
 
 resource "aws_sns_topic_subscription" "alarms_email" {

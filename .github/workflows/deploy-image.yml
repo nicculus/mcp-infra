@@ -39,21 +39,29 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set image tag
+        id: tag
+        run: echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
       - name: Build
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: docker build -t $REGISTRY/$ECR_REPOSITORY:latest mcp-server/
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: docker build -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG mcp-server/
 
       - name: Push
         if: github.event_name == 'push'
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: docker push $REGISTRY/$ECR_REPOSITORY:latest
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Deploy to Lambda
         if: github.event_name == 'push'
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
           aws lambda update-function-code \
             --function-name mcp-server-dev \
-            --image-uri ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest \
+            --image-uri ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG \
             --region ${{ env.AWS_REGION }}

@@ -37,6 +37,7 @@ provider "aws" {
 }
 
 variable "aws_region" {
+  type    = string
   default = "us-east-1"
 }
 
@@ -44,8 +45,12 @@ variable "aws_region" {
 
 resource "aws_ecr_repository" "mcp_server" {
   name                 = "mcp-server"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
   force_delete         = var.ecr_force_delete
+
+  encryption_configuration {
+    encryption_type = "KMS"
+  }
 
   image_scanning_configuration {
     scan_on_push = true
