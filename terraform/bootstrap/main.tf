@@ -48,9 +48,27 @@ variable "project_name" {
   default = "mcp-infra"
 }
 
+data "aws_caller_identity" "current" {}
+
+# --- KMS key for state bucket encryption -------------------------------------
+
+resource "aws_kms_key" "state" {
+  description             = "${var.project_name} Terraform state bucket encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "state" {
+  name          = "alias/${var.project_name}-tfstate"
+  target_key_id = aws_kms_key.state.key_id
+}
+
 # --- S3 bucket for Terraform state -------------------------------------------
 
 resource "aws_s3_bucket" "terraform_state" {
+  # checkov:skip=CKV_AWS_144: Cross-region replication is overkill for a Terraform state bucket
+  # checkov:skip=CKV2_AWS_62: Event notifications are not applicable for a state bucket
+  # checkov:skip=CKV_AWS_18: Access logging on a state bucket is recursive and unnecessary
   bucket = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}"
 
   lifecycle {
@@ -69,7 +87,22 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
   bucket = aws_s3_bucket.terraform_state.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.state.arn
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  rule {
+    id     = "expire-old-versions"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 90
     }
   }
 }
@@ -93,11 +126,18 @@ resource "aws_dynamodb_table" "terraform_locks" {
     name = "LockID"
     type = "S"
   }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled     = true
+    kms_key_arn = aws_kms_key.state.arn
+  }
 }
 
 # --- GitHub OIDC provider ----------------------------------------------------
-
-data "aws_caller_identity" "current" {}
 
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
@@ -137,6 +177,8 @@ resource "aws_iam_role" "github_actions" {
 }
 
 resource "aws_iam_role_policy" "github_actions" {
+  # checkov:skip=CKV_AWS_355: ECR GetAuthorizationToken requires Resource="*" per AWS docs — cannot be scoped
+  # checkov:skip=CKV_AWS_290: ECR GetAuthorizationToken requires Resource="*" per AWS docs — cannot be scoped
   name = "github-actions-mcp-infra"
   role = aws_iam_role.github_actions.id
 
@@ -169,6 +211,13 @@ resource "aws_iam_role_policy" "github_actions" {
         ]
         Resource = aws_dynamodb_table.terraform_locks.arn
       },
+      # ECR — GetAuthorizationToken cannot be scoped to a resource per AWS docs
+      {
+        Sid      = "ECRAuth"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
       # ECR — repository management (Terraform) + image push (deploy-image)
       {
         Sid    = "ECR"
@@ -180,7 +229,6 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecr:GetRepositoryPolicy",
           "ecr:ListTagsForResource",
           "ecr:TagResource",
-          "ecr:GetAuthorizationToken",
           "ecr:BatchCheckLayerAvailability",
           "ecr:PutImage",
           "ecr:InitiateLayerUpload",
@@ -189,7 +237,7 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecr:BatchGetImage",
           "ecr:DescribeImages",
         ]
-        Resource = "*"
+        Resource = "arn:aws:ecr:*:${data.aws_caller_identity.current.account_id}:repository/mcp-server*"
       },
       # Lambda — create/update/read function and permissions
       {
@@ -208,6 +256,9 @@ resource "aws_iam_role_policy" "github_actions" {
           "lambda:GetPolicy",
           "lambda:TagResource",
           "lambda:ListTags",
+          "lambda:PutFunctionConcurrency",
+          "lambda:GetFunctionConcurrency",
+          "lambda:DeleteFunctionConcurrency",
         ]
         Resource = "arn:aws:lambda:*:${data.aws_caller_identity.current.account_id}:function:mcp-server-*"
       },
@@ -250,6 +301,7 @@ resource "aws_iam_role_policy" "github_actions" {
           "logs:ListTagsForResource",
           "logs:PutRetentionPolicy",
           "logs:TagResource",
+          "logs:AssociateKmsKey",
         ]
         Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/*"
       },
@@ -302,6 +354,40 @@ resource "aws_iam_role_policy" "github_actions" {
           "iam:PassRole",
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/mcp-server-lambda-*"
+      },
+      # KMS — manage encryption keys for mcp-server resources
+      {
+        Sid    = "KMS"
+        Effect = "Allow"
+        Action = [
+          "kms:CreateKey",
+          "kms:DescribeKey",
+          "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus",
+          "kms:ListResourceTags",
+          "kms:ScheduleKeyDeletion",
+          "kms:EnableKeyRotation",
+          "kms:CreateAlias",
+          "kms:DeleteAlias",
+          "kms:ListAliases",
+          "kms:TagResource",
+          "kms:PutKeyPolicy",
+        ]
+        Resource = "*"
+      },
+      # SQS — manage Lambda DLQ
+      {
+        Sid    = "SQS"
+        Effect = "Allow"
+        Action = [
+          "sqs:CreateQueue",
+          "sqs:DeleteQueue",
+          "sqs:GetQueueAttributes",
+          "sqs:SetQueueAttributes",
+          "sqs:ListQueueTags",
+          "sqs:TagQueue",
+        ]
+        Resource = "arn:aws:sqs:*:${data.aws_caller_identity.current.account_id}:mcp-server-*"
       },
     ]
   })

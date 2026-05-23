@@ -45,7 +45,7 @@ variable "aws_region" {
 
 resource "aws_ecr_repository" "mcp_server" {
   name                 = "mcp-server"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
   force_delete         = var.ecr_force_delete
 
   image_scanning_configuration {
