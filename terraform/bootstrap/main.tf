@@ -249,6 +249,8 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecr:GetRepositoryPolicy",
           "ecr:SetRepositoryPolicy",
           "ecr:DeleteRepositoryPolicy",
+          "ecr:PutImageTagMutability",
+          "ecr:PutEncryptionConfiguration",
           "ecr:ListTagsForResource",
           "ecr:TagResource",
           "ecr:BatchCheckLayerAvailability",
@@ -269,6 +271,7 @@ resource "aws_iam_role_policy" "github_actions" {
           "lambda:CreateFunction",
           "lambda:DeleteFunction",
           "lambda:GetFunction",
+          "lambda:GetFunctionConfiguration",
           "lambda:GetFunctionCodeSigningConfig",
           "lambda:ListVersionsByFunction",
           "lambda:UpdateFunctionCode",
@@ -323,7 +326,9 @@ resource "aws_iam_role_policy" "github_actions" {
           "logs:ListTagsForResource",
           "logs:PutRetentionPolicy",
           "logs:TagResource",
+          "logs:TagLogGroup",
           "logs:AssociateKmsKey",
+          "logs:DisassociateKmsKey",
         ]
         Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/*"
       },
@@ -339,6 +344,7 @@ resource "aws_iam_role_policy" "github_actions" {
           "sns:Subscribe",
           "sns:Unsubscribe",
           "sns:GetSubscriptionAttributes",
+          "sns:SetSubscriptionAttributes",
           "sns:ListTagsForResource",
           "sns:TagResource",
         ]
@@ -366,6 +372,7 @@ resource "aws_iam_role_policy" "github_actions" {
           "iam:DeleteRole",
           "iam:GetRole",
           "iam:TagRole",
+          "iam:UpdateAssumeRolePolicy",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
           "iam:ListAttachedRolePolicies",
@@ -410,6 +417,7 @@ resource "aws_iam_role_policy" "github_actions" {
         Action = [
           "sqs:CreateQueue",
           "sqs:DeleteQueue",
+          "sqs:GetQueueUrl",
           "sqs:GetQueueAttributes",
           "sqs:SetQueueAttributes",
           "sqs:ListQueueTags",
