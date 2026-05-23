@@ -247,6 +247,8 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecr:DeleteRepository",
           "ecr:DescribeRepositories",
           "ecr:GetRepositoryPolicy",
+          "ecr:SetRepositoryPolicy",
+          "ecr:DeleteRepositoryPolicy",
           "ecr:ListTagsForResource",
           "ecr:TagResource",
           "ecr:BatchCheckLayerAvailability",
