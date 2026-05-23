@@ -28,6 +28,7 @@ provider "aws" {
 }
 
 variable "aws_region" {
+  type    = string
   default = "us-east-1"
 }
 
@@ -43,6 +44,7 @@ variable "github_repo" {
 }
 
 variable "project_name" {
+  type    = string
   default = "mcp-infra"
 }
 

@@ -2,6 +2,16 @@
 # MCP Server Module - Lambda behind API Gateway (zero idle cost)
 # =============================================================================
 
+terraform {
+  required_version = ">= 1.12.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 variable "environment" {
   type    = string
   default = "dev"
@@ -30,7 +40,6 @@ variable "allowed_origins" {
 
 # --- Data sources ------------------------------------------------------------
 
-data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 # --- Lambda execution role ---------------------------------------------------
