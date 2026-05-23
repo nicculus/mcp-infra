@@ -47,7 +47,6 @@ variable "reserved_concurrent_executions" {
 # --- Data sources ------------------------------------------------------------
 
 data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
 
 # --- KMS key (shared across CloudWatch, SNS, Lambda env vars) ----------------
 
