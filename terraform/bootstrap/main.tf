@@ -394,6 +394,9 @@ resource "aws_iam_role_policy" "github_actions" {
           "kms:ListAliases",
           "kms:TagResource",
           "kms:PutKeyPolicy",
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:GenerateDataKey",
         ]
         Resource = "*"
       },
