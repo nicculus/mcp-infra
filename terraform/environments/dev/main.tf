@@ -45,7 +45,7 @@ variable "aws_region" {
 resource "aws_ecr_repository" "mcp_server" {
   name                 = "mcp-server"
   image_tag_mutability = "MUTABLE"
-  force_delete         = true # Dev only - remove for prod
+  force_delete         = var.ecr_force_delete
 
   image_scanning_configuration {
     scan_on_push = true
@@ -57,6 +57,12 @@ resource "aws_ecr_repository" "mcp_server" {
 variable "alarm_email" {
   description = "Email address for CloudWatch alarm notifications"
   type        = string
+}
+
+variable "ecr_force_delete" {
+  description = "Allow terraform destroy to delete ECR repo with existing images. Only enable in dev."
+  type        = bool
+  default     = true # Dev only — set to false in prod
 }
 
 module "mcp_server" {

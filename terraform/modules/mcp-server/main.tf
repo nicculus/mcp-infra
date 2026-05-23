@@ -22,6 +22,12 @@ variable "timeout" {
   default = 30
 }
 
+variable "allowed_origins" {
+  description = "CORS allowed origins. Default '*' allows any origin — restrict in production."
+  type        = list(string)
+  default     = ["*"]
+}
+
 # --- Data sources ------------------------------------------------------------
 
 data "aws_region" "current" {}
@@ -108,7 +114,7 @@ resource "aws_apigatewayv2_api" "mcp" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins = ["*"]
+    allow_origins = var.allowed_origins
     allow_methods = ["GET", "POST", "OPTIONS"]
     allow_headers = ["Content-Type", "Authorization"]
     max_age       = 3600
