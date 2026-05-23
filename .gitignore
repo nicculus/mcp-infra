@@ -14,3 +14,5 @@ override.tf.json
 *.tfbackend
 !*.tfbackend.example
 .vscode/
+conversation-*.md
+phase*.md

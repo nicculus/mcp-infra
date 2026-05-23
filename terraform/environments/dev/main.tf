@@ -58,6 +58,28 @@ resource "aws_ecr_repository" "mcp_server" {
   }
 }
 
+resource "aws_ecr_repository_policy" "mcp_server" {
+  repository = aws_ecr_repository.mcp_server.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "LambdaECRImageRetrievalPolicy"
+        Effect = "Allow"
+        Principal = {
+          AWS = module.mcp_server.lambda_execution_role_arn
+        }
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability",
+        ]
+      }
+    ]
+  })
+}
+
 # --- MCP server (Lambda + API Gateway) ---------------------------------------
 
 variable "alarm_email" {
