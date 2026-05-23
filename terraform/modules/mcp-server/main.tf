@@ -54,6 +54,21 @@ resource "aws_kms_key" "mcp" {
   description             = "mcp-server-${var.environment} encryption key"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 resource "aws_kms_alias" "mcp" {
@@ -114,7 +129,7 @@ resource "aws_sqs_queue" "dlq" {
 
 resource "aws_cloudwatch_log_group" "mcp_server" {
   name              = "/aws/lambda/mcp-server-${var.environment}"
-  retention_in_days = 14
+  retention_in_days = 365
   kms_key_id        = aws_kms_key.mcp.arn
 }
 
@@ -229,7 +244,7 @@ resource "aws_apigatewayv2_stage" "default" {
 
 resource "aws_cloudwatch_log_group" "api_gw" {
   name              = "/aws/apigateway/mcp-${var.environment}"
-  retention_in_days = 14
+  retention_in_days = 365
   kms_key_id        = aws_kms_key.mcp.arn
 }
 
@@ -242,6 +257,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
 }
 
 resource "aws_apigatewayv2_route" "catch_all" {
+  # checkov:skip=CKV_AWS_309: Authorization is enforced in Lambda via x-api-key header check, not at the route level
   api_id             = aws_apigatewayv2_api.mcp.id
   route_key          = "$default"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"

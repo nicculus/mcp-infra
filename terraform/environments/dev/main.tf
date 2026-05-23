@@ -48,6 +48,10 @@ resource "aws_ecr_repository" "mcp_server" {
   image_tag_mutability = "IMMUTABLE"
   force_delete         = var.ecr_force_delete
 
+  encryption_configuration {
+    encryption_type = "KMS"
+  }
+
   image_scanning_configuration {
     scan_on_push = true
   }

@@ -56,6 +56,21 @@ resource "aws_kms_key" "state" {
   description             = "${var.project_name} Terraform state bucket encryption"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 resource "aws_kms_alias" "state" {
@@ -103,6 +118,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
 
     noncurrent_version_expiration {
       noncurrent_days = 90
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
     }
   }
 }
@@ -179,6 +198,7 @@ resource "aws_iam_role" "github_actions" {
 resource "aws_iam_role_policy" "github_actions" {
   # checkov:skip=CKV_AWS_355: ECR GetAuthorizationToken requires Resource="*" per AWS docs — cannot be scoped
   # checkov:skip=CKV_AWS_290: ECR GetAuthorizationToken requires Resource="*" per AWS docs — cannot be scoped
+  # checkov:skip=CKV_AWS_289: KMS CreateKey and CloudWatch log delivery actions require Resource="*" per AWS docs
   name = "github-actions-mcp-infra"
   role = aws_iam_role.github_actions.id
 
