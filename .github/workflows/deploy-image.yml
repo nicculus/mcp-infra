@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "mcp-server/**"
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -50,14 +51,14 @@ jobs:
         run: docker build -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG mcp-server/
 
       - name: Push
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
         run: docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Deploy to Lambda
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
         run: |

@@ -204,6 +204,13 @@ resource "aws_lambda_function" "mcp_server" {
 
   kms_key_arn = aws_kms_key.mcp.arn
 
+  # image_uri is managed by the deploy-image workflow (SHA-tagged pushes).
+  # Terraform only sets it on creation; subsequent image updates go through
+  # `aws lambda update-function-code` in CI, not through Terraform.
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic,
     aws_cloudwatch_log_group.mcp_server,
