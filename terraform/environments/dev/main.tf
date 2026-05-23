@@ -1,6 +1,7 @@
 # =============================================================================
 # DEV ENVIRONMENT - Serverless (Lambda + API Gateway)
 # =============================================================================
+# KMS, DLQ, X-Ray, immutable ECR tags — applied via CI after bootstrap update.
 # Backend config is intentionally partial — bucket and region are resolved at
 # init time. In CI the bucket name is derived from the AWS account ID via
 # `aws sts get-caller-identity`; locally, pass a .tfbackend file
