@@ -116,8 +116,8 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_iam_role_policy" "mcp_secrets" {
-  name = "mcp-secrets"
+resource "aws_iam_role_policy" "mcp_execution" {
+  name = "mcp-execution"
   role = aws_iam_role.lambda.id
 
   policy = jsonencode({
@@ -133,8 +133,26 @@ resource "aws_iam_role_policy" "mcp_secrets" {
         Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
         Resource = aws_kms_key.mcp.arn
       },
+      {
+        Effect   = "Allow"
+        Action   = ["sqs:SendMessage"]
+        Resource = aws_sqs_queue.dlq.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords",
+        ]
+        Resource = "*"
+      },
     ]
   })
+}
+
+moved {
+  from = aws_iam_role_policy.mcp_secrets
+  to   = aws_iam_role_policy.mcp_execution
 }
 
 # --- Dead Letter Queue -------------------------------------------------------
