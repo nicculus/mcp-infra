@@ -8,7 +8,7 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from secrets import get_secret
+from cloud_secrets import get_secret
 
 mcp = FastMCP("github-repo-explorer")
 

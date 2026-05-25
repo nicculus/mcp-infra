@@ -5,6 +5,6 @@ RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt \
                 -r ${LAMBDA_TASK_ROOT}/requirements-aws.txt \
                 --target "${LAMBDA_TASK_ROOT}"
 
-COPY server.py secrets.py handler_lambda.py ${LAMBDA_TASK_ROOT}/
+COPY server.py cloud_secrets.py handler_lambda.py ${LAMBDA_TASK_ROOT}/
 
 CMD ["handler_lambda.handler"]
