@@ -53,6 +53,7 @@ jobs:
         run: |
           docker build \
             -f mcp-server/Dockerfile \
+            --build-arg CLOUD_PROVIDER=gcp \
             -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG \
             -t $REGISTRY/$IMAGE_NAME:latest \
             mcp-server/
