@@ -207,6 +207,7 @@ locals {
     "roles/artifactregistry.admin",
     "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser",
+    "roles/resourcemanager.projectIamAdmin",
     "roles/secretmanager.admin",
     "roles/monitoring.admin",
     "roles/cloudkms.admin",

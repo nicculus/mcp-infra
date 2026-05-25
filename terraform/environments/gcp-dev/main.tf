@@ -52,7 +52,9 @@ module "mcp_server" {
 
   gcp_project_id  = var.gcp_project_id
   gcp_region      = var.gcp_region
-  container_image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/mcp-server/mcp-server:latest"
+  # Placeholder image for initial Terraform apply — deploy-image-gcp workflow
+  # pushes the real image and updates the service via gcloud run services update.
+  container_image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
   environment     = "dev"
   memory_size     = 512
   timeout         = 30
