@@ -3,7 +3,7 @@
 *.tfstate.*
 *.tfplan
 .terraform/
-.terraform.lock.hcl
+# .terraform.lock.hcl is intentionally committed for reproducible builds
 crash.log
 override.tf
 override.tf.json
@@ -14,5 +14,3 @@ override.tf.json
 *.tfbackend
 !*.tfbackend.example
 .vscode/
-conversation-*.md
-phase*.md

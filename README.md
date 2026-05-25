@@ -88,7 +88,7 @@ The dev environment needs an email for CloudWatch alerts. Add a GitHub Actions v
 
 | Name | Value |
 |------|-------|
-| `TF_VAR_alarm_email` | Your email address |
+| `TF_VAR_ALARM_EMAIL` | Your email address |
 
 ### 4. Push and go
 
