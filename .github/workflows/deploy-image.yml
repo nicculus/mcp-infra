@@ -47,7 +47,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-        run: docker build -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG mcp-server/
+        run: docker build -f mcp-server/Dockerfile.lambda -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG mcp-server/
 
       - name: Push
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'

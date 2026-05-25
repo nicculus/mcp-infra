@@ -2,29 +2,19 @@ import base64
 import os
 import re
 
-import boto3
 import httpx
 from fastmcp import FastMCP
-from mangum import Mangum
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from secrets import get_secret
+
 mcp = FastMCP("github-repo-explorer")
 
-_sm = boto3.client("secretsmanager")
-
-
-def _get_secret(env_var: str) -> str:
-    name = os.environ.get(env_var, "")
-    if not name:
-        return ""
-    return _sm.get_secret_value(SecretId=name).get("SecretString", "")
-
-
 # Fetched once per container cold start
-_API_KEY = _get_secret("API_KEY_SECRET")
-_GITHUB_PAT = _get_secret("GITHUB_PAT_SECRET")
+_API_KEY = get_secret("API_KEY_SECRET")
+_GITHUB_PAT = get_secret("GITHUB_PAT_SECRET")
 
 
 def _github_headers() -> dict:
@@ -100,6 +90,5 @@ async def _auth_middleware(scope, receive, send):
     await _mcp_app(scope, receive, send)
 
 
-_app = Starlette(routes=_mcp_app.routes, lifespan=_mcp_app.lifespan)
-_app.middleware_stack = _auth_middleware
-handler = Mangum(_app, lifespan="on")
+app = Starlette(routes=_mcp_app.routes, lifespan=_mcp_app.lifespan)
+app.middleware_stack = _auth_middleware

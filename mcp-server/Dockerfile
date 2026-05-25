@@ -1,8 +1,10 @@
-FROM public.ecr.aws/lambda/python:3.12
+FROM python:3.12-slim
 
-COPY requirements.txt ${LAMBDA_TASK_ROOT}/
-RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt --target "${LAMBDA_TASK_ROOT}"
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY server.py ${LAMBDA_TASK_ROOT}/
+COPY server.py secrets.py ./
 
-CMD ["server.handler"]
+EXPOSE 8080
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080"]
