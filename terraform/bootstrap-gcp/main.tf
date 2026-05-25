@@ -3,8 +3,7 @@
 # cd terraform/bootstrap-gcp && terraform init && terraform apply \
 #   -var="gcp_project_id=mcp-infra-gcp" \
 #   -var="github_org=YOUR_GITHUB_USERNAME" \
-#   -var="billing_account=YOUR_BILLING_ACCOUNT_ID" \
-#   -var="budget_alert_email=YOU@example.com"
+#   -var="billing_account=YOUR_BILLING_ACCOUNT_ID"
 # =============================================================================
 #
 # This creates:
@@ -66,11 +65,6 @@ variable "project_name" {
 
 variable "billing_account" {
   description = "GCP billing account ID (format: XXXXXX-XXXXXX-XXXXXX)"
-  type        = string
-}
-
-variable "budget_alert_email" {
-  description = "Email address for budget alert notifications"
   type        = string
 }
 

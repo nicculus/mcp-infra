@@ -1,5 +1,3 @@
-data "google_project" "current" {}
-
 # Service account for the Cloud Run service
 resource "google_service_account" "mcp_server" {
   account_id   = "mcp-server-${var.environment}"
