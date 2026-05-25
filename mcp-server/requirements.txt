@@ -1,4 +1,4 @@
-fastmcp[server]>=2.0
+fastmcp-slim[server]>=3.0
 httpx>=0.27
 starlette>=0.40
 uvicorn>=0.32
