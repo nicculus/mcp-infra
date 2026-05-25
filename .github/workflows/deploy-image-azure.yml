@@ -1,0 +1,76 @@
+name: Deploy Image (Azure)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mcp-server/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "mcp-server/**"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AZURE_REGION: eastus
+  IMAGE_NAME: mcp-server
+
+jobs:
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to ACR
+        run: az acr login --name ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
+
+      - name: Set image tag
+        id: tag
+        run: echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          REGISTRY: ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
+        run: |
+          docker build \
+            -f mcp-server/Dockerfile \
+            --build-arg CLOUD_PROVIDER=azure \
+            -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG \
+            -t $REGISTRY/$IMAGE_NAME:latest \
+            mcp-server/
+
+      - name: Push
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          REGISTRY: ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
+        run: |
+          docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
+      - name: Deploy to Container App
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          REGISTRY: ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
+        run: |
+          az containerapp update \
+            --name mcp-server-dev \
+            --resource-group mcp-infra-dev \
+            --image $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
