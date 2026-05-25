@@ -211,6 +211,7 @@ locals {
   github_actions_roles = [
     "roles/run.admin",
     "roles/artifactregistry.admin",
+    "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser",
     "roles/secretmanager.admin",
     "roles/monitoring.admin",
