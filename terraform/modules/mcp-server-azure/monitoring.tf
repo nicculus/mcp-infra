@@ -18,7 +18,7 @@ resource "azurerm_monitor_metric_alert" "request_errors" {
   criteria {
     metric_namespace = "Microsoft.App/containerApps"
     metric_name      = "Requests"
-    aggregation      = "Count"
+    aggregation      = "Total"
     operator         = "GreaterThan"
     threshold        = 10
 
