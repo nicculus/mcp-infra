@@ -1,16 +1,16 @@
-name: Terraform
+name: Terraform AWS
 
 on:
   push:
     branches: [main]
     paths:
       - "terraform/**"
-      - ".github/workflows/terraform.yml"
+      - ".github/workflows/terraform-aws.yml"
   pull_request:
     branches: [main]
     paths:
       - "terraform/**"
-      - ".github/workflows/terraform.yml"
+      - ".github/workflows/terraform-aws.yml"
 
 permissions:
   id-token: write   # Required for OIDC
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: terraform/environments/dev
+        working-directory: terraform/environments/aws-dev
 
     steps:
       - name: Checkout

@@ -45,7 +45,7 @@ Choose one or more clouds. Each is fully independent.
 #### 1. Bootstrap
 
 ```bash
-cd terraform/bootstrap
+cd terraform/bootstrap-aws
 terraform init
 terraform apply \
   -var="github_org=YOUR_GITHUB_USERNAME" \
@@ -56,6 +56,7 @@ terraform apply \
 > ```bash
 > terraform import aws_iam_openid_connect_provider.github \
 >   arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com
+> terraform apply -var="github_org=YOUR_GITHUB_USERNAME" -var="budget_alert_email=YOUR_EMAIL"
 > ```
 
 #### 2. Add GitHub secrets
@@ -193,8 +194,8 @@ CI applies Terraform and deploys the image automatically. The `terraform-azure.y
 
 ```
 ├── .github/workflows/
-│   ├── terraform.yml            # AWS: plan on PR, apply on merge
-│   ├── deploy-image.yml         # AWS: build + push to ECR, update Lambda
+│   ├── terraform-aws.yml        # AWS: plan on PR, apply on merge
+│   ├── deploy-image-aws.yml     # AWS: build + push to ECR, update Lambda
 │   ├── terraform-gcp.yml        # GCP: plan on PR, apply on merge
 │   ├── deploy-image-gcp.yml     # GCP: build + push to Artifact Registry, update Cloud Run
 │   ├── terraform-azure.yml      # Azure: plan on PR, apply on merge

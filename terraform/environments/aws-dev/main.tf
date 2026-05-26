@@ -115,7 +115,7 @@ variable "ecr_force_delete" {
 }
 
 module "mcp_server" {
-  source = "../../modules/mcp-server"
+  source = "../../modules/mcp-server-aws"
 
   container_image = "${aws_ecr_repository.mcp_server.repository_url}:latest"
   environment     = "dev"
