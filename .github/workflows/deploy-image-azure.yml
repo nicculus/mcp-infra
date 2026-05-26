@@ -19,6 +19,7 @@ permissions:
 env:
   AZURE_REGION: eastus
   IMAGE_NAME: mcp-server
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build-and-push:

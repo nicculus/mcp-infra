@@ -12,6 +12,30 @@ terraform {
   }
 }
 
+# --- Data sources ------------------------------------------------------------
+
+data "azurerm_container_registry" "mcp" {
+  name                = split(".", var.acr_login_server)[0]
+  resource_group_name = var.acr_resource_group_name
+}
+
+# --- User-assigned identity for ACR pull -------------------------------------
+# A user-assigned identity avoids the chicken-and-egg problem with system-
+# assigned identities: the Container App's system identity doesn't exist until
+# the resource is created, but Azure validates registry access during creation.
+
+resource "azurerm_user_assigned_identity" "acr_pull" {
+  name                = "mcp-server-${var.environment}-acr-pull"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "acr_pull" {
+  scope                = data.azurerm_container_registry.mcp.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.acr_pull.principal_id
+}
+
 # --- Container Apps environment ----------------------------------------------
 
 resource "azurerm_container_app_environment" "mcp" {
@@ -29,12 +53,13 @@ resource "azurerm_container_app" "mcp_server" {
   revision_mode                = "Single"
 
   identity {
-    type = "SystemAssigned"
+    type         = "SystemAssigned, UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.acr_pull.id]
   }
 
   registry {
     server   = var.acr_login_server
-    identity = "System"
+    identity = azurerm_user_assigned_identity.acr_pull.id
   }
 
   ingress {
@@ -92,6 +117,9 @@ resource "azurerm_container_app" "mcp_server" {
       }
     }
   }
+
+  # Wait for AcrPull role to propagate before creating the Container App
+  depends_on = [azurerm_role_assignment.acr_pull]
 
   # Image URI is managed by the deploy-image-azure workflow after initial creation
   lifecycle {

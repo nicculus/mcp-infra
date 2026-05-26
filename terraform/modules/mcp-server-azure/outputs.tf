@@ -13,6 +13,11 @@ output "managed_identity_principal_id" {
   value       = azurerm_container_app.mcp_server.identity[0].principal_id
 }
 
+output "acr_pull_identity_id" {
+  description = "User-assigned managed identity for ACR pull"
+  value       = azurerm_user_assigned_identity.acr_pull.id
+}
+
 output "key_vault_name" {
   description = "Key Vault name (populate secrets before first invocation)"
   value       = azurerm_key_vault.mcp.name

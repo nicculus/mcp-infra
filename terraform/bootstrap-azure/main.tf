@@ -71,6 +71,28 @@ variable "project_name" {
 data "azurerm_subscription" "current" {}
 data "azuread_client_config" "current" {}
 
+# --- Resource provider registrations -----------------------------------------
+
+resource "azurerm_resource_provider_registration" "container_apps" {
+  name = "Microsoft.App"
+}
+
+resource "azurerm_resource_provider_registration" "operational_insights" {
+  name = "Microsoft.OperationalInsights"
+}
+
+resource "azurerm_resource_provider_registration" "container_registry" {
+  name = "Microsoft.ContainerRegistry"
+}
+
+resource "azurerm_resource_provider_registration" "key_vault" {
+  name = "Microsoft.KeyVault"
+}
+
+resource "azurerm_resource_provider_registration" "insights" {
+  name = "Microsoft.Insights"
+}
+
 # --- Resource group ----------------------------------------------------------
 
 resource "azurerm_resource_group" "bootstrap" {

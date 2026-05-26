@@ -51,6 +51,12 @@ variable "acr_login_server" {
   type        = string
 }
 
+variable "acr_resource_group_name" {
+  description = "Resource group containing the ACR (defaults to bootstrap RG)"
+  type        = string
+  default     = "mcp-infra-bootstrap"
+}
+
 variable "alarm_email" {
   description = "Email address for monitoring alert notifications"
   type        = string
