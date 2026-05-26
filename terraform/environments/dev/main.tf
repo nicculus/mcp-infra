@@ -131,5 +131,5 @@ output "ecr_repository_url" {
 }
 
 output "mcp_endpoint" {
-  value = module.mcp_server.api_endpoint
+  value = module.mcp_server.service_url
 }

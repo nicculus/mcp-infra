@@ -10,8 +10,9 @@ variable "container_image" {
 }
 
 variable "memory_size" {
-  type    = number
-  default = 512
+  description = "Memory limit in MiB"
+  type        = number
+  default     = 512
 
   validation {
     condition     = var.memory_size >= 128 && var.memory_size <= 10240
@@ -20,8 +21,9 @@ variable "memory_size" {
 }
 
 variable "timeout" {
-  type    = number
-  default = 30
+  description = "Request timeout in seconds"
+  type        = number
+  default     = 30
 
   validation {
     condition     = var.timeout >= 1 && var.timeout <= 900
@@ -43,8 +45,9 @@ variable "reserved_concurrent_executions" {
 # --- Environment -------------------------------------------------------------
 
 variable "environment" {
-  type    = string
-  default = "dev"
+  description = "Deployment environment"
+  type        = string
+  default     = "dev"
 
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)

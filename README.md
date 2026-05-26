@@ -1,44 +1,48 @@
 # Serverless MCP Server Infrastructure
 
-Deploy any [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server on AWS with zero idle cost, full CI/CD, and no long-lived AWS credentials — using Terraform, Lambda, and GitHub Actions OIDC.
+Deploy any [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server on AWS, GCP, or Azure with zero idle cost, full CI/CD, and no long-lived cloud credentials — using Terraform and GitHub Actions OIDC.
 
 **Cost at rest: $0.** You pay only when your MCP server receives requests.
 
 ## Why this exists
 
-Running an MCP server in the cloud usually means paying for an always-on container or VM. This setup uses AWS Lambda behind API Gateway — you pay per request (~$1 per million) and nothing when idle. The full pipeline is automated: `terraform plan` runs on every PR, `terraform apply` runs on merge to main, and AWS credentials are never stored as long-lived secrets.
+Running an MCP server in the cloud usually means paying for an always-on container or VM. This setup uses serverless compute — AWS Lambda, GCP Cloud Run, or Azure Container Apps — so you pay per request and nothing when idle. The full pipeline is automated: `terraform plan` runs on every PR, `terraform apply` runs on merge to main, and cloud credentials are never stored as long-lived secrets.
 
 ## Architecture
 
+Each cloud uses the same pattern: a serverless container that scales to zero, with secrets stored in a managed secret service and accessed via a managed identity (no credentials in code or Terraform state).
+
 ```
-Claude / MCP Client
-        │
-        ▼
-API Gateway (HTTP API)
-        │
-        ▼
-Lambda Function (container image from ECR)
-        │
-        ▼
-Your MCP server code
+MCP Client
+    │
+    ▼
+AWS:   API Gateway → Lambda (ECR image) → Secrets Manager
+GCP:   Cloud Run (Artifact Registry image) → Secret Manager
+Azure: Container Apps (ACR image) → Key Vault
 ```
 
-**Two-phase Terraform setup:**
+### Two-phase Terraform setup (per cloud)
 
-- **Bootstrap** — run once from your local machine. Creates the S3 state bucket, DynamoDB lock table, and GitHub OIDC trust so CI can assume an AWS role without storing credentials.
-- **Dev environment** — managed entirely by CI after that. Creates ECR, Lambda, API Gateway, IAM, and CloudWatch log groups.
+- **Bootstrap** — run once manually. Creates the state bucket, OIDC federation, registry, and CI service account/role.
+- **Environment** — managed by CI after that. Creates all runtime resources.
 
 ## Prerequisites
 
-- AWS account with admin access
+- Accounts on whichever cloud(s) you want to deploy to
 - [Terraform >= 1.12](https://developer.hashicorp.com/terraform/install) (`brew install hashicorp/tap/terraform`)
-- AWS CLI configured (`aws configure`)
-- GitHub repo (public or private)
+- Cloud CLIs: `aws`, `gcloud`, and/or `az`
 - Docker (for building your MCP server image)
+- GitHub repo
 
 ## Setup
 
-### 1. Bootstrap (one-time, from your machine)
+Choose one or more clouds. Each is fully independent.
+
+---
+
+### AWS
+
+#### 1. Bootstrap
 
 ```bash
 cd terraform/bootstrap
@@ -48,227 +52,232 @@ terraform apply \
   -var="budget_alert_email=YOUR_EMAIL"
 ```
 
-This creates:
-- S3 bucket + DynamoDB table for remote Terraform state
-- GitHub OIDC provider in AWS (no stored credentials needed)
-- IAM role (`mcp-infra-github-actions`) that GitHub Actions can assume
-- AWS Budget alert — email when monthly spend exceeds 80% of $5
-
-> **Note:** If you see `EntityAlreadyExists` for the OIDC provider, you already have one from a previous project. Run:
+> If you see `EntityAlreadyExists` for the OIDC provider, import it:
 > ```bash
 > terraform import aws_iam_openid_connect_provider.github \
 >   arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com
-> terraform apply -var="github_org=YOUR_GITHUB_USERNAME"
 > ```
 
-Save the outputs — you'll need them in the next step.
+#### 2. Add GitHub secrets
 
-### 2. Wire up the pipeline
-
-**Add a GitHub Actions secret** in your repo settings → Secrets and variables → Actions:
-
-| Name | Value |
-|------|-------|
+| Secret | Value |
+|--------|-------|
 | `AWS_ROLE_ARN` | `role_arn` output from bootstrap |
 
-**For local Terraform runs**, create a backend config file (gitignored):
+#### 3. Create secrets before first invocation
 
 ```bash
-cd terraform/environments/dev
-cp backend.tfbackend.example backend.tfbackend
-# Edit backend.tfbackend — set bucket to the state_bucket output from bootstrap
-terraform init -backend-config=backend.tfbackend
+aws secretsmanager create-secret --name mcp-infra/api-key \
+  --secret-string "$(openssl rand -hex 32)" --region us-east-1
+aws secretsmanager create-secret --name mcp-infra/github-pat \
+  --secret-string "YOUR_PAT" --region us-east-1
 ```
 
-> CI derives the bucket name automatically from your AWS account ID — no manual config needed there.
+#### 4. Add a GitHub Actions variable
 
-### 3. Set the alarm email
-
-The dev environment needs an email for CloudWatch alerts. Add a GitHub Actions variable in your repo settings → Secrets and variables → Actions → Variables:
-
-| Name | Value |
-|------|-------|
+| Variable | Value |
+|----------|-------|
 | `TF_VAR_ALARM_EMAIL` | Your email address |
 
-### 4. Push and go
+#### 5. Push and go
 
 ```bash
-git add . && git commit -m "initial infra" && git push
+git push origin main
 ```
 
-GitHub Actions will run `terraform plan` automatically. Merge to main to apply.
+CI runs `terraform plan` on PRs and `terraform apply` on merge. The `deploy-image` workflow builds and pushes the Lambda image automatically on changes to `mcp-server/`.
 
-> **Note:** After the first apply, AWS will send a confirmation email for the CloudWatch alarm SNS subscription — click **Confirm subscription** or alerts won't fire.
+---
 
-### 5. Push an image
+### GCP
 
-The Lambda function needs a container image in ECR before it can be created. The `deploy-image` workflow handles this automatically on push to `main` when files under `mcp-server/` change. Or push manually:
+#### 1. Create a GCP project and enable billing
 
 ```bash
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin \
-  YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
-
-docker build -t YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mcp-server:latest mcp-server/
-docker push YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mcp-server:latest
+gcloud projects create YOUR_PROJECT_ID
+gcloud billing projects link YOUR_PROJECT_ID --billing-account=YOUR_BILLING_ACCOUNT_ID
+gcloud config set project YOUR_PROJECT_ID
 ```
 
-After the image is pushed, re-run the Terraform workflow to finish creating the Lambda function.
+#### 2. Bootstrap
+
+```bash
+cd terraform/bootstrap-gcp
+terraform init
+terraform apply \
+  -var="gcp_project_id=YOUR_PROJECT_ID" \
+  -var="github_org=YOUR_GITHUB_USERNAME" \
+  -var="billing_account=YOUR_BILLING_ACCOUNT_ID"
+```
+
+#### 3. Add GitHub secrets
+
+| Secret | Value |
+|--------|-------|
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `workload_identity_provider` output |
+| `GCP_SERVICE_ACCOUNT` | `service_account_email` output |
+
+Also add `TF_VAR_ALARM_EMAIL` as a GitHub Actions variable.
+
+#### 4. Create secrets before first invocation
+
+```bash
+printf "YOUR_API_KEY" | gcloud secrets versions add mcp-api-key-dev \
+  --data-file=- --project=YOUR_PROJECT_ID
+printf "YOUR_GITHUB_PAT" | gcloud secrets versions add mcp-github-pat-dev \
+  --data-file=- --project=YOUR_PROJECT_ID
+```
+
+Note: use `printf` (not `echo`) to avoid a trailing newline in the secret value.
+
+#### 5. Push and go
+
+CI applies Terraform and deploys the image automatically. The `terraform-gcp.yml` and `deploy-image-gcp.yml` workflows trigger on changes to their respective paths.
+
+---
+
+### Azure
+
+#### 1. Log in and find your subscription ID
+
+```bash
+az login
+az account show --query id -o tsv
+```
+
+#### 2. Bootstrap
+
+```bash
+cd terraform/bootstrap-azure
+ARM_SKIP_PROVIDER_REGISTRATION=true terraform init
+ARM_SKIP_PROVIDER_REGISTRATION=true terraform apply \
+  -var="subscription_id=YOUR_SUBSCRIPTION_ID" \
+  -var="github_org=YOUR_GITHUB_USERNAME"
+```
+
+#### 3. Add GitHub secrets
+
+```bash
+gh secret set AZURE_CLIENT_ID --body "client_id output"
+gh secret set AZURE_TENANT_ID --body "tenant_id output"
+gh secret set AZURE_SUBSCRIPTION_ID --body "subscription_id output"
+gh secret set AZURE_STATE_STORAGE_ACCOUNT --body "state_storage_account output"
+gh secret set AZURE_ACR_LOGIN_SERVER --body "acr_login_server output"
+```
+
+Also add `TF_VAR_ALARM_EMAIL` as a GitHub Actions variable.
+
+#### 4. Register resource providers (once per subscription)
+
+```bash
+az provider register --namespace Microsoft.App --wait
+az provider register --namespace Microsoft.OperationalInsights --wait
+```
+
+#### 5. Create secrets before first invocation
+
+```bash
+az keyvault secret set --vault-name mcp-dev-kv \
+  --name mcp-api-key-dev --value "YOUR_API_KEY"
+az keyvault secret set --vault-name mcp-dev-kv \
+  --name mcp-github-pat-dev --value "YOUR_GITHUB_PAT"
+```
+
+#### 6. Push and go
+
+CI applies Terraform and deploys the image automatically. The `terraform-azure.yml` and `deploy-image-azure.yml` workflows trigger on changes to their respective paths.
+
+---
 
 ## Repo structure
 
 ```
 ├── .github/workflows/
-│   ├── terraform.yml       # Plan on PR, apply on merge to main
-│   └── deploy-image.yml    # Build + push container image to ECR
+│   ├── terraform.yml            # AWS: plan on PR, apply on merge
+│   ├── deploy-image.yml         # AWS: build + push to ECR, update Lambda
+│   ├── terraform-gcp.yml        # GCP: plan on PR, apply on merge
+│   ├── deploy-image-gcp.yml     # GCP: build + push to Artifact Registry, update Cloud Run
+│   ├── terraform-azure.yml      # Azure: plan on PR, apply on merge
+│   └── deploy-image-azure.yml   # Azure: build + push to ACR, update Container App
 ├── mcp-server/
-│   ├── Dockerfile          # Lambda container image
-│   ├── requirements.txt
-│   └── server.py           # FastMCP server (replace with your own)
+│   ├── Dockerfile               # Generic container (CLOUD_PROVIDER build arg)
+│   ├── Dockerfile.lambda        # AWS Lambda-specific (uses Lambda base image)
+│   ├── server.py                # FastMCP server (replace with your own)
+│   ├── cloud_secrets.py         # Routes secret fetching to aws/gcp/azure/env
+│   ├── handler_lambda.py        # Lambda entrypoint (thin Mangum wrapper)
+│   ├── requirements.txt         # Base deps (fastmcp-slim, uvicorn, starlette)
+│   ├── requirements-aws.txt     # AWS extras (mangum, boto3)
+│   ├── requirements-gcp.txt     # GCP extras (google-cloud-secret-manager)
+│   └── requirements-azure.txt   # Azure extras (azure-keyvault-secrets, azure-identity)
 └── terraform/
-    ├── bootstrap/           # Run once manually
-    │   └── main.tf          # OIDC provider, state bucket, IAM role
+    ├── bootstrap/               # AWS: run once manually
+    ├── bootstrap-gcp/           # GCP: run once manually
+    ├── bootstrap-azure/         # Azure: run once manually
     ├── environments/
-    │   └── dev/
-    │       └── main.tf      # ECR repository + mcp-server module
+    │   ├── dev/                 # AWS dev environment
+    │   ├── gcp-dev/             # GCP dev environment
+    │   └── azure-dev/           # Azure dev environment
     └── modules/
-        └── mcp-server/
-            └── main.tf      # Lambda, API Gateway, IAM, CloudWatch logs
+        ├── mcp-server/          # AWS: Lambda + API Gateway + IAM + CloudWatch
+        ├── mcp-server-gcp/      # GCP: Cloud Run + Secret Manager + Monitoring
+        └── mcp-server-azure/    # Azure: Container Apps + Key Vault + Monitor
 ```
 
 ## Deploying your own MCP server
 
-Replace `mcp-server/server.py` (and the `Dockerfile` if needed) with your MCP server implementation. Any push to `main` that touches `mcp-server/` will rebuild and push the image, then Lambda will pick it up on the next invocation.
+Replace `mcp-server/server.py` with your MCP server implementation. The `cloud_secrets.py` module handles secrets transparently across all three clouds — your server code just calls `get_secret("ENV_VAR_NAME")` and gets back the secret value regardless of which cloud it's running on.
 
-The Lambda execution role has `AWSLambdaBasicExecutionRole` only. Extend it in `terraform/modules/mcp-server/main.tf` for additional AWS access (DynamoDB, S3, Secrets Manager, etc.).
+```python
+from cloud_secrets import get_secret
 
-## Cost estimate
+MY_API_KEY = get_secret("API_KEY_SECRET")  # works on AWS, GCP, and Azure
+```
 
-| Resource | Idle | Per-request |
-|----------|------|-------------|
-| API Gateway | $0 | $1.00 / million requests |
-| Lambda (512 MB) | $0 | ~$0.20 / million invocations |
-| ECR | ~$0.10 / GB / month | — |
-| CloudWatch Logs | $0 | ~$0.50 / GB ingested |
-
-A lightly-used personal MCP server costs effectively nothing.
+Any push to `main` that touches `mcp-server/` rebuilds and redeploys the image on all configured clouds automatically.
 
 ## Authentication
 
-The endpoint requires an `x-api-key` header on every request. The key is stored in AWS Secrets Manager (`mcp-infra/api-key`) and never appears in logs or Terraform state.
-
-Responses are [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events). Pipe through `grep` and `sed` to extract the JSON:
+Every request requires an `x-api-key` header. The key is stored in the cloud's secret service and never appears in logs or Terraform state.
 
 ```bash
 curl -s -X POST https://YOUR_ENDPOINT/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}' \
-  | grep '^data:' | sed 's/^data: //'
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
-Example response:
+Responses are [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "tools": [
-      {
-        "name": "get_repo_summary",
-        "description": "Get metadata about a GitHub repository (stars, language, description, topics).",
-        "inputSchema": {
-          "properties": { "repo_url": { "type": "string" } },
-          "required": ["repo_url"],
-          "type": "object"
-        }
-      },
-      {
-        "name": "get_repo_readme",
-        "description": "Fetch the README content of a GitHub repository.",
-        "inputSchema": {
-          "properties": { "repo_url": { "type": "string" } },
-          "required": ["repo_url"],
-          "type": "object"
-        }
-      }
-    ]
-  }
-}
-```
+## Cost estimate
 
-Call a tool:
+All three clouds have the same idle cost: **$0**.
 
-```bash
-curl -s -X POST https://YOUR_ENDPOINT/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","id":2,"params":{"name":"get_repo_summary","arguments":{"repo_url":"anthropics/anthropic-sdk-python"}}}' \
-  | grep '^data:' | sed 's/^data: //'
-```
+| Cloud | Per-request cost |
+|-------|-----------------|
+| AWS Lambda + API Gateway | ~$1.20 / million requests |
+| GCP Cloud Run | ~$0.40 / million requests |
+| Azure Container Apps | ~$0.40 / million requests |
 
-Example response:
+A lightly-used personal MCP server costs effectively nothing on any cloud.
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "result": {
-    "content": [{ "type": "text", "text": "..." }],
-    "structuredContent": {
-      "name": "anthropics/anthropic-sdk-python",
-      "description": "The official Python library for the Anthropic API",
-      "stars": 3100,
-      "forks": 312,
-      "language": "Python",
-      "topics": ["anthropic", "claude", "llm"],
-      "url": "https://github.com/anthropics/anthropic-sdk-python",
-      "created_at": "2023-07-19T17:00:00Z",
-      "updated_at": "2026-05-20T00:00:00Z"
-    },
-    "isError": false
-  }
-}
-```
+## Cost protection
 
-To provision the key before deploying:
+Each cloud has a budget alert and rate limiting:
 
-```bash
-aws secretsmanager create-secret \
-  --name mcp-infra/api-key \
-  --secret-string "$(openssl rand -hex 32)" \
-  --region us-east-1
-```
-
-The GitHub PAT (for authenticated GitHub API calls, 5,000 req/hr vs 60 unauthenticated) is stored the same way. Create one at GitHub → Settings → Developer settings → Personal access tokens, scoped to **Public Repositories (read-only)**, then store it:
-
-```bash
-aws secretsmanager create-secret \
-  --name mcp-infra/github-pat \
-  --secret-string "YOUR_PAT" \
-  --region us-east-1
-```
-
-Both secrets are fetched once per Lambda cold start and cached in memory.
-
-## Cost protection and alerting
-
-| Layer | What it does |
-|-------|-------------|
-| API Gateway throttling | 429s after 10 req/sec sustained / 50 burst — caps Lambda invocations |
-| CloudWatch alarms | Email within 5 minutes if invocations > 1,000 or errors > 10 in a 5-minute window |
-| AWS Budget alert | Email when monthly spend hits 80% of $5 |
-
-> After the first Terraform apply, confirm the SNS subscription email from AWS or alerts won't fire.
+| Cloud | Rate limiting | Alert |
+|-------|--------------|-------|
+| AWS | API Gateway throttling (10 rps / 50 burst) | CloudWatch alarm + Budget alert at 80% of $5 |
+| GCP | Cloud Run max instances | Cloud Monitoring alert + Billing budget at 80% of $5 |
+| Azure | Container App max replicas | Azure Monitor alert + (manual budget via Azure portal) |
 
 ## Known limitations / production hardening
 
-- [ ] API Gateway CORS allows `*` origins — restrict for production
-- [ ] ECR `force_delete = true` is dev-only — remove before creating a prod environment
-- [ ] Add a prod environment (`terraform/environments/prod/`) when ready
+- [ ] AWS: API Gateway CORS allows `*` origins — restrict for production
+- [ ] AWS: ECR `force_delete = true` is dev-only — set to `false` in prod
+- [ ] GCP: `deletion_protection = false` is intentional for dev — set to `true` in prod
+- [ ] Azure: Key Vault `soft_delete_retention_days = 7` and `purge_protection_enabled = false` — enable purge protection in prod
+- [ ] All clouds: add prod environments (`environments/prod/`, `environments/gcp-prod/`, `environments/azure-prod/`)
 
 ## License
 
