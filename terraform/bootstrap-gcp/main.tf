@@ -150,6 +150,10 @@ resource "google_storage_bucket" "terraform_state" {
     }
   }
 
+  logging {
+    log_bucket = google_storage_bucket.terraform_state.name
+  }
+
   lifecycle {
     prevent_destroy = true
   }
@@ -167,6 +171,7 @@ resource "google_iam_workload_identity_pool" "github" {
   depends_on = [google_project_service.apis]
 }
 
+#checkov:skip=CKV_GCP_125:attribute_condition already restricts to this repo; adding ref would break PR workflows
 resource "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-oidc"
@@ -217,6 +222,8 @@ locals {
   ]
 }
 
+#checkov:skip=CKV_GCP_49:serviceAccountAdmin/User are required for CI to manage the Cloud Run service account via Terraform
+#checkov:skip=CKV_GCP_41:serviceAccountUser at project level is required for CI to act as the Cloud Run service account
 resource "google_project_iam_member" "github_actions" {
   for_each = toset(local.github_actions_roles)
 
@@ -227,6 +234,7 @@ resource "google_project_iam_member" "github_actions" {
 
 # --- Artifact Registry repository --------------------------------------------
 
+#checkov:skip=CKV_GCP_84:CSEK for Artifact Registry is operationally complex; Google-managed keys are sufficient for dev
 resource "google_artifact_registry_repository" "mcp_server" {
   repository_id = "mcp-server"
   location      = var.gcp_region

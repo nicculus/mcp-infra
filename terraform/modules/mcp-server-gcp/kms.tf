@@ -7,6 +7,10 @@ resource "google_kms_crypto_key" "mcp" {
   name            = "mcp-server-${var.environment}"
   key_ring        = google_kms_key_ring.mcp.id
   rotation_period = "7776000s" # 90 days
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Grant Cloud Run service account access to decrypt with this key
