@@ -118,6 +118,9 @@ resource "azurerm_storage_account" "terraform_state" {
 
   blob_properties {
     versioning_enabled = true
+    delete_retention_policy {
+      days = 7
+    }
   }
 
   min_tls_version = "TLS1_2"

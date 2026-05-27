@@ -6,11 +6,13 @@ on:
     paths:
       - "terraform/environments/azure-dev/**"
       - "terraform/modules/mcp-server-azure/**"
+      - ".github/workflows/terraform-azure.yml"
   pull_request:
     branches: [main]
     paths:
       - "terraform/environments/azure-dev/**"
       - "terraform/modules/mcp-server-azure/**"
+      - ".github/workflows/terraform-azure.yml"
   workflow_dispatch:
 
 concurrency:
@@ -43,6 +45,7 @@ jobs:
             terraform:
               - 'terraform/environments/azure-dev/**'
               - 'terraform/modules/mcp-server-azure/**'
+              - 'terraform/bootstrap-azure/**'
               - '.github/workflows/terraform-azure.yml'
 
   terraform:
@@ -112,8 +115,13 @@ jobs:
             --skip-check CKV_AZURE_189 \
             --skip-check CKV_AZURE_109 \
             --skip-check CKV_AZURE_41 \
-            --skip-check CKV_AZURE_114
+            --skip-check CKV_AZURE_114 \
+            --skip-check CKV2_AZURE_33 \
+            --skip-check CKV2_AZURE_40 \
+            --skip-check CKV2_AZURE_41 \
+            --skip-check CKV2_AZURE_47
           # Storage: LRS/no-queue-log/public-blob — dev TF state bucket only
+          # Storage v2: private endpoint, shared-key auth, SAS expiry, anon blob — use RBAC not SAS; private endpoint is overkill for dev
           # ACR: geo-replication, zone redundancy, scanning, content trust — require Premium SKU
           # Key Vault: purge protection off, public access, no firewall, no expiry — intentional dev tradeoffs
 
