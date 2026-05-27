@@ -26,9 +26,27 @@ env:
   GCP_STATE_BUCKET: mcp-infra-tfstate-mcp-infra-gcp
 
 jobs:
+  check-changes:
+    name: Check changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            terraform:
+              - 'terraform/environments/gcp-dev/**'
+              - 'terraform/modules/mcp-server-gcp/**'
+              - '.github/workflows/terraform-gcp.yml'
+
   terraform:
     name: Terraform
     runs-on: ubuntu-latest
+    needs: check-changes
+    if: needs.check-changes.outputs.terraform == 'true' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout
