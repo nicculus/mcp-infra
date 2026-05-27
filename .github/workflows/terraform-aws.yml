@@ -87,7 +87,7 @@ jobs:
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: terraform/
+          directory: terraform/bootstrap-aws,terraform/environments/aws-dev,terraform/modules/mcp-server-aws
           framework: terraform
           quiet: true
           soft_fail: true
