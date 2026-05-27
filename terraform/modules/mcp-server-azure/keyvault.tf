@@ -1,9 +1,5 @@
 data "azurerm_client_config" "current" {}
 
-#checkov:skip=CKV_AZURE_110:Purge protection disabled intentionally for dev — enables clean teardown
-#checkov:skip=CKV_AZURE_42:soft_delete_retention_days=7 is the minimum; purge protection off for dev
-#checkov:skip=CKV_AZURE_189:Public network access allowed for dev; restrict in prod with network_acls
-#checkov:skip=CKV_AZURE_109:No firewall rules for dev; restrict in prod with network_acls
 resource "azurerm_key_vault" "mcp" {
   name                = "mcp-${var.environment}-kv"
   location            = var.location

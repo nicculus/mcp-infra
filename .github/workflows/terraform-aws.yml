@@ -92,7 +92,19 @@ jobs:
             -d terraform/bootstrap-aws \
             -d terraform/environments/aws-dev \
             -d terraform/modules/mcp-server-aws \
-            --framework terraform --quiet --soft-fail
+            --framework terraform --quiet --soft-fail \
+            --skip-check CKV_AWS_144 \
+            --skip-check CKV2_AWS_62 \
+            --skip-check CKV_AWS_18 \
+            --skip-check CKV_AWS_117 \
+            --skip-check CKV_AWS_272 \
+            --skip-check CKV_AWS_309
+          # CKV_AWS_144: Cross-region replication overkill for dev TF state bucket
+          # CKV2_AWS_62: Event notifications not applicable for state bucket
+          # CKV_AWS_18: Access logging on state bucket is recursive
+          # CKV_AWS_117: Lambda VPC requires NAT gateway (~$32/month) — breaks zero-cost promise
+          # CKV_AWS_272: Code-signing is an enterprise feature out of scope for this template
+          # CKV_AWS_309: Auth enforced in Lambda via x-api-key, not at route level
 
       - name: Terraform Init
         run: |

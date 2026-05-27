@@ -102,13 +102,6 @@ resource "azurerm_resource_group" "bootstrap" {
 
 # --- Storage account for Terraform state -------------------------------------
 
-#checkov:skip=CKV_AZURE_206:LRS is sufficient for a dev-only Terraform state bucket
-#checkov:skip=CKV_AZURE_190:Terraform state is private; public blob access is disabled at account level
-#checkov:skip=CKV_AZURE_59:Public access disabled via allow_blob_public_access=false (default in provider v4)
-#checkov:skip=CKV_AZURE_33:Queue logging not required for a blob-only Terraform state account
-#checkov:skip=CKV2_AZURE_1:CMK encryption is overkill for a dev bootstrap state bucket
-#checkov:skip=CKV2_AZURE_18:CMK encryption is overkill for a dev bootstrap state bucket
-#checkov:skip=CKV2_AZURE_21:Diagnostic logging not required for dev bootstrap state account
 resource "azurerm_storage_account" "terraform_state" {
   name                     = replace("${var.project_name}tfstate", "-", "")
   resource_group_name      = azurerm_resource_group.bootstrap.name
@@ -131,7 +124,6 @@ resource "azurerm_storage_account" "terraform_state" {
   }
 }
 
-#checkov:skip=CKV2_AZURE_21:Logging not required for dev bootstrap state container
 resource "azurerm_storage_container" "terraform_state" {
   name                  = "tfstate"
   storage_account_id    = azurerm_storage_account.terraform_state.id
@@ -140,15 +132,6 @@ resource "azurerm_storage_container" "terraform_state" {
 
 # --- Azure Container Registry ------------------------------------------------
 
-#checkov:skip=CKV_AZURE_165:Geo-replication requires Premium SKU; Basic is intentional for dev cost
-#checkov:skip=CKV_AZURE_233:Zone redundancy requires Premium SKU
-#checkov:skip=CKV_AZURE_167:Untagged manifest retention requires Standard+ SKU
-#checkov:skip=CKV_AZURE_166:Quarantine requires Premium SKU
-#checkov:skip=CKV_AZURE_163:Defender vulnerability scanning requires Standard+ SKU
-#checkov:skip=CKV_AZURE_237:Dedicated data endpoints require Premium SKU
-#checkov:skip=CKV_AZURE_139:Network rules require Standard+ SKU; Basic is public by design
-#checkov:skip=CKV_AZURE_164:Content trust requires Premium SKU
-#checkov:skip=CKV2_AZURE_5:Private endpoint requires Premium SKU
 resource "azurerm_container_registry" "mcp_server" {
   name                = replace("${var.project_name}registry", "-", "")
   resource_group_name = azurerm_resource_group.bootstrap.name

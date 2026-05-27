@@ -26,9 +26,6 @@ resource "aws_lambda_function" "mcp_server" {
   memory_size   = var.memory_size
   timeout       = var.timeout
 
-  # checkov:skip=CKV_AWS_117: Lambda VPC requires NAT gateway (~$32/month) which breaks the zero-cost promise
-  # checkov:skip=CKV_AWS_272: Code-signing is an enterprise feature out of scope for this template
-
   reserved_concurrent_executions = var.reserved_concurrent_executions
 
   tracing_config {

@@ -47,7 +47,6 @@ resource "aws_apigatewayv2_integration" "lambda" {
 }
 
 resource "aws_apigatewayv2_route" "catch_all" {
-  # checkov:skip=CKV_AWS_309: Authorization is enforced in Lambda via x-api-key header check, not at the route level
   api_id             = aws_apigatewayv2_api.mcp.id
   route_key          = "$default"
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"

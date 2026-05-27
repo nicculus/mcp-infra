@@ -81,9 +81,6 @@ resource "aws_kms_alias" "state" {
 # --- S3 bucket for Terraform state -------------------------------------------
 
 resource "aws_s3_bucket" "terraform_state" {
-  # checkov:skip=CKV_AWS_144: Cross-region replication is overkill for a Terraform state bucket
-  # checkov:skip=CKV2_AWS_62: Event notifications are not applicable for a state bucket
-  # checkov:skip=CKV_AWS_18: Access logging on a state bucket is recursive and unnecessary
   bucket = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}"
 
   lifecycle {
@@ -196,9 +193,6 @@ resource "aws_iam_role" "github_actions" {
 }
 
 resource "aws_iam_role_policy" "github_actions" {
-  # checkov:skip=CKV_AWS_355: ECR GetAuthorizationToken requires Resource="*" per AWS docs — cannot be scoped
-  # checkov:skip=CKV_AWS_290: ECR GetAuthorizationToken requires Resource="*" per AWS docs — cannot be scoped
-  # checkov:skip=CKV_AWS_289: KMS CreateKey and CloudWatch log delivery actions require Resource="*" per AWS docs
   name = "github-actions-mcp-infra"
   role = aws_iam_role.github_actions.id
 
