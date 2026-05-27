@@ -13,6 +13,10 @@ on:
       - "terraform/modules/mcp-server-azure/**"
   workflow_dispatch:
 
+concurrency:
+  group: azure-deploy
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read

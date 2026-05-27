@@ -11,6 +11,10 @@ on:
       - "mcp-server/**"
   workflow_dispatch:
 
+concurrency:
+  group: azure-deploy
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
