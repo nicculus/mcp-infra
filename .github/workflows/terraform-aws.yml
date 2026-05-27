@@ -85,12 +85,13 @@ jobs:
         working-directory: terraform
 
       - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: terraform/bootstrap-aws,terraform/environments/aws-dev,terraform/modules/mcp-server-aws
-          framework: terraform
-          quiet: true
-          soft_fail: true
+        run: |
+          pip install checkov -q
+          checkov \
+            -d terraform/bootstrap-aws \
+            -d terraform/environments/aws-dev \
+            -d terraform/modules/mcp-server-aws \
+            --framework terraform --quiet --soft-fail
 
       - name: Terraform Init
         run: |

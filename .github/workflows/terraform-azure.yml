@@ -84,12 +84,13 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: terraform/bootstrap-azure,terraform/environments/azure-dev,terraform/modules/mcp-server-azure
-          framework: terraform
-          quiet: true
-          soft_fail: true
+        run: |
+          pip install checkov -q
+          checkov \
+            -d terraform/bootstrap-azure \
+            -d terraform/environments/azure-dev \
+            -d terraform/modules/mcp-server-azure \
+            --framework terraform --quiet --soft-fail
 
       - name: Terraform Validate
         working-directory: ${{ env.WORKING_DIR }}
