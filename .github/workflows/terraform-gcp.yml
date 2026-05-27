@@ -80,7 +80,15 @@ jobs:
             -d terraform/bootstrap-gcp \
             -d terraform/environments/gcp-dev \
             -d terraform/modules/mcp-server-gcp \
-            --framework terraform --quiet --soft-fail
+            --framework terraform --quiet --soft-fail \
+            --skip-check CKV_GCP_125 \
+            --skip-check CKV_GCP_84 \
+            --skip-check CKV_GCP_49 \
+            --skip-check CKV_GCP_41
+          # CKV_GCP_125: OIDC attribute_condition already restricts to this repo; adding ref filter breaks PRs
+          # CKV_GCP_84: CSEK for Artifact Registry is operationally complex; Google-managed keys sufficient for dev
+          # CKV_GCP_49: serviceAccountAdmin/User required for CI to manage Cloud Run service account via Terraform
+          # CKV_GCP_41: serviceAccountUser at project level required for CI to act as Cloud Run service account
 
       - name: Terraform Validate
         working-directory: ${{ env.WORKING_DIR }}
