@@ -213,15 +213,15 @@ CI applies Terraform and deploys the image automatically. The `terraform-azure.y
 │   ├── requirements-gcp.txt     # GCP extras (google-cloud-secret-manager)
 │   └── requirements-azure.txt   # Azure extras (azure-keyvault-secrets, azure-identity)
 └── terraform/
-    ├── bootstrap/               # AWS: run once manually
+    ├── bootstrap-aws/           # AWS: run once manually
     ├── bootstrap-gcp/           # GCP: run once manually
     ├── bootstrap-azure/         # Azure: run once manually
     ├── environments/
-    │   ├── dev/                 # AWS dev environment
+    │   ├── aws-dev/             # AWS dev environment
     │   ├── gcp-dev/             # GCP dev environment
     │   └── azure-dev/           # Azure dev environment
     └── modules/
-        ├── mcp-server/          # AWS: Lambda + API Gateway + IAM + CloudWatch
+        ├── mcp-server-aws/      # AWS: Lambda + API Gateway + IAM + CloudWatch
         ├── mcp-server-gcp/      # GCP: Cloud Run + Secret Manager + Monitoring
         └── mcp-server-azure/    # Azure: Container Apps + Key Vault + Monitor
 ```
