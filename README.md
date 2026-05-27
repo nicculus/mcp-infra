@@ -4,6 +4,8 @@ Deploy any [Model Context Protocol (MCP)](https://modelcontextprotocol.io) serve
 
 **Cost at rest: $0.** You pay only when your MCP server receives requests.
 
+Looking for the client? See **[mcp-client](https://github.com/nicculus/mcp-client)** — a CLI and Node.js library for calling these endpoints.
+
 ## Why this exists
 
 Running an MCP server in the cloud usually means paying for an always-on container or VM. This setup uses serverless compute — AWS Lambda, GCP Cloud Run, or Azure Container Apps — so you pay per request and nothing when idle. The full pipeline is automated: `terraform plan` runs on every PR, `terraform apply` runs on merge to main, and cloud credentials are never stored as long-lived secrets.
@@ -236,6 +238,14 @@ MY_API_KEY = get_secret("API_KEY_SECRET")  # works on AWS, GCP, and Azure
 
 Any push to `main` that touches `mcp-server/` rebuilds and redeploys the image on all configured clouds automatically.
 
+## Connecting a client
+
+Use **[mcp-client](https://github.com/nicculus/mcp-client)** — a CLI and Node.js library for calling MCP servers over Streamable HTTP. It handles authentication, request formatting, and response parsing.
+
+```bash
+npx @nicculus/mcp-client tools list --url https://YOUR_ENDPOINT/mcp --key YOUR_API_KEY
+```
+
 ## Authentication
 
 Every request requires an `x-api-key` header. The key is stored in the cloud's secret service and never appears in logs or Terraform state.
@@ -248,7 +258,7 @@ curl -s -X POST https://YOUR_ENDPOINT/mcp \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
-Responses are [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
+The server uses [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) transport.
 
 ## Cost estimate
 
