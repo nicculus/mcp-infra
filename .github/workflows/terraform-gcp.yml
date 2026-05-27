@@ -6,11 +6,13 @@ on:
     paths:
       - "terraform/environments/gcp-dev/**"
       - "terraform/modules/mcp-server-gcp/**"
+      - ".github/workflows/terraform-gcp.yml"
   pull_request:
     branches: [main]
     paths:
       - "terraform/environments/gcp-dev/**"
       - "terraform/modules/mcp-server-gcp/**"
+      - ".github/workflows/terraform-gcp.yml"
   workflow_dispatch:
 
 permissions:
@@ -40,6 +42,7 @@ jobs:
             terraform:
               - 'terraform/environments/gcp-dev/**'
               - 'terraform/modules/mcp-server-gcp/**'
+              - 'terraform/bootstrap-gcp/**'
               - '.github/workflows/terraform-gcp.yml'
 
   terraform:
