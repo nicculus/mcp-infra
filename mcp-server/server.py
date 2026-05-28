@@ -75,6 +75,70 @@ async def get_repo_readme(repo_url: str) -> str:
     return base64.b64decode(data["content"]).decode("utf-8")
 
 
+# --- Resources ---------------------------------------------------------------
+
+@mcp.resource("server://info")
+def get_server_info() -> str:
+    """Server metadata including version, cloud provider, and capabilities."""
+    import json
+    return json.dumps({
+        "name": "mcp-infra-demo",
+        "version": "0.1.0",
+        "cloud": os.environ.get("CLOUD_PROVIDER", "local"),
+        "capabilities": ["tools", "resources", "prompts"],
+        "transport": "streamable-http",
+    })
+
+
+@mcp.resource("config://{key}")
+def get_config(key: str) -> str:
+    """Read a configuration value by key. Demo resource with URI template."""
+    import json
+    config = {
+        "region": os.environ.get("AWS_REGION", os.environ.get("AZURE_REGION", os.environ.get("GCP_REGION", "local"))),
+        "runtime": "python",
+        "framework": "fastmcp",
+    }
+    value = config.get(key)
+    if value is None:
+        return json.dumps({"error": f"Unknown config key: {key}", "available_keys": list(config.keys())})
+    return json.dumps({"key": key, "value": value})
+
+
+# --- Prompts -----------------------------------------------------------------
+
+@mcp.prompt()
+def analyze_endpoint(url: str, method: str = "GET") -> str:
+    """Generate a prompt for analyzing an API endpoint's behavior and response."""
+    return f"""Analyze the following API endpoint and provide a summary of:
+1. What the endpoint does based on its URL pattern
+2. Expected request format for {method} {url}
+3. Likely response structure
+4. Potential error cases
+5. Security considerations
+
+Endpoint: {method} {url}"""
+
+
+@mcp.prompt()
+def troubleshoot_deployment(cloud: str, service: str, error_message: str = "") -> str:
+    """Generate a troubleshooting prompt for a cloud deployment issue."""
+    base = f"""Help troubleshoot a deployment issue on {cloud}.
+
+Service: {service}
+Cloud Provider: {cloud}"""
+    if error_message:
+        base += f"\nError Message: {error_message}"
+    base += """
+
+Please provide:
+1. Common causes for this type of issue
+2. Diagnostic steps to identify the root cause
+3. Recommended fixes in order of likelihood
+4. Prevention strategies for the future"""
+    return base
+
+
 # --- Auth middleware ---------------------------------------------------------
 
 _mcp_app = mcp.http_app(stateless_http=True)
