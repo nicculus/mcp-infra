@@ -5,10 +5,12 @@ on:
     paths:
       - "mcp-server/**"
       - "pyproject.toml"
+      - ".github/workflows/test-server.yml"
   pull_request:
     paths:
       - "mcp-server/**"
       - "pyproject.toml"
+      - ".github/workflows/test-server.yml"
 
 jobs:
   test:
