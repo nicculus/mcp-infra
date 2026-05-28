@@ -1,0 +1,3 @@
+[tool.pytest.ini_options]
+testpaths = ["mcp-server/tests"]
+asyncio_mode = "auto"
