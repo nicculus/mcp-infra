@@ -1,3 +1,8 @@
+> **This repo has moved.** Development continues at
+> [nicculus/simple-mcp](https://github.com/nicculus/simple-mcp/tree/main/infra),
+> a monorepo combining this infra with the [mcp-client](https://github.com/nicculus/mcp-client) and
+> [mcp-client-python](https://github.com/nicculus/mcp-client-python) client libraries.
+
 # Serverless MCP Server Infrastructure
 
 Deploy any [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server on AWS, GCP, or Azure with zero idle cost, full CI/CD, and no long-lived cloud credentials — using Terraform and GitHub Actions OIDC.
